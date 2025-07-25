@@ -6,7 +6,6 @@ dotenv.config();
 export default async function handler(req, res) {
   // Pobierz API key z env (nigdy z frontu)
   const apiKey = process.env.ZTM_API_KEY;
-  console.log('ZTM_API_KEY:', apiKey); // DEBUG: loguj klucz do konsoli (tylko backend)
   if (!apiKey) {
     res.status(500).json({ error: 'API key not set in environment' });
     return;
@@ -19,6 +18,7 @@ export default async function handler(req, res) {
     return;
   }
   const url = `${base}?resource_id=${resource_id}&apikey=${apiKey}&type=${type}`;
+  console.log('Proxying request to:', url);
 
   try {
     const apiRes = await fetch(url);
