@@ -11,7 +11,7 @@ const API_KEY = (typeof process !== 'undefined' && process.env && process.env.ZT
 const API_URL = `/api/ztm-proxy?resource_id=f2e5503e927d-4ad3-9500-4ab9e55deb59&apikey=${API_KEY}&type=1`;
 const USE_MOCK = !API_KEY;
 
-// --- POMOCNICZA HISTORIA AUTOBUSÓW ---
+// --- POMOCNICZA HISTORIA AUTOBUSÓW ----
 // VehicleNumber -> [{lon, lat, time}]
 const busHistory = {};
 const HISTORY_LENGTH = 100; // ile pozycji historii trzymać (wydłużony ogon)
