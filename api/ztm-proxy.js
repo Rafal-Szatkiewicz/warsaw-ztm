@@ -21,7 +21,11 @@ export default async function handler(req, res) {
   console.log('Proxying request to:', url);
 
   try {
-    const apiRes = await fetch(url);
+    const apiRes = await fetch(url, {
+      headers: {
+        'User-Agent': 'warsaw-ztm-proxy/1.0 (Vercel)'
+      }
+    });
     const data = await apiRes.text(); // API ZTM zwraca JSON jako tekst
     // Dodaj nagłówki CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
