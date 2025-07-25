@@ -27,6 +27,7 @@ export default async function handler(req, res) {
       }
     });
     const data = await apiRes.text(); // API ZTM zwraca JSON jako tekst
+    console.log('ZTM API response:', data.slice(0, 100) + '...'); // Loguj pierwsze 100 znaków odpowiedzi
     // Dodaj nagłówki CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/json');
