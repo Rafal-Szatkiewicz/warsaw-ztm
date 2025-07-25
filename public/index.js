@@ -4,13 +4,10 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import {TripsLayer} from '@deck.gl/geo-layers';
 
 // --- KONFIGURACJA API ---
-// Klucz API pobierany z env (Vercel) lub window (dev)
-const API_KEY = (typeof process !== 'undefined' && process.env && process.env.ZTM_API_KEY)
-  ? process.env.ZTM_API_KEY
-  : (typeof window !== 'undefined' && window.ZTM_API_KEY ? window.ZTM_API_KEY : '');
-const API_URL = `/api/ztm-proxy?resource_id=f2e5503e927d-4ad3-9500-4ab9e55deb59&apikey=${API_KEY}&type=1`;
+// Frontend nie używa dotenv ani process.env! Klucz API jest w proxy.
+const API_URL = `/api/ztm-proxy?resource_id=f2e5503e927d-4ad3-9500-4ab9e55deb59&type=1`;
 console.log('API URL:', API_URL);
-const USE_MOCK = !API_KEY;
+const USE_MOCK = false; // Ustaw na true jeśli chcesz wymusić mock, np. lokalnie bez proxy
 console.log('Using mock data:', USE_MOCK);
 
 // --- POMOCNICZA HISTORIA AUTOBUSÓW ----
