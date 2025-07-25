@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     return;
   }
   const url = `${base}?resource_id=${resource_id}&apikey=${apiKey}&type=${type}`;
-  console.log('Proxying request to:', url);
+  //console.log('Proxying request to:', url);
 
   try {
     const apiRes = await fetch(url, {
