@@ -1,0 +1,23 @@
+{
+  "name": "warsaw-ztm",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "dev": "parcel public/index.html",
+    "build": "parcel build public/index.html"
+  },
+  "author": "Rafał Szatkiewicz",
+  "license": "ISC",
+  "dependencies": {
+    "@deck.gl/geo-layers": "^9.1.12",
+    "@deck.gl/layers": "^9.1.12",
+    "@deck.gl/mapbox": "^9.1.12",
+    "express": "^5.1.0",
+    "maplibre-gl": "^5.6.0"
+  },
+  "devDependencies": {
+    "buffer": "^6.0.3",
+    "parcel": "^2.15.4",
+    "process": "^0.11.10"
+  }
+}
