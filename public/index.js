@@ -5,7 +5,7 @@ import {TripsLayer} from '@deck.gl/geo-layers';
 
 // --- KONFIGURACJA DANYCH ---
 // Pobieraj dane GTFS-RT z https://mkuran.pl/gtfs/warsaw/vehicles.pb (brak API key)
-const VEHICLES_PB_URL = 'https://mkuran.pl/gtfs/warsaw/vehicles.pb';
+const VEHICLES_PB_URL = '/api/ztm-proxy';
 const GTFS_PROTO_URL = 'https://raw.githubusercontent.com/google/transit/master/gtfs-realtime/proto/gtfs-realtime.proto';
 
 // --- POMOCNICZA HISTORIA AUTOBUSÓW ----
