@@ -222,8 +222,18 @@ async function init() {
   }
 
   function animateTrails() {
-  // Ustal globalny currentTime (unix timestamp w sekundach)
-  const nowSec = Math.floor(Date.now() / 1000);
+  // Wyznacz najstarszy timestamp z wszystkich tripów
+  let t0 = null;
+  for (const trip of lastTripsData) {
+    if (trip.timestamps && trip.timestamps.length > 0) {
+      const first = trip.timestamps[0];
+      if (t0 === null || first < t0) t0 = first;
+    }
+  }
+  if (t0 === null) t0 = Math.floor(Date.now() / 1000);
+  // currentTime: ile sekund minęło od t0
+  const nowSec = Date.now() / 1000;
+  const relCurrentTime = nowSec - t0;
   // Interpoluj pozycje do nowej lokalizacji
   const tripsDataInterp = interpolateTripsData();
   const layers = overlay.props && overlay.props.layers ? overlay.props.layers : [];
@@ -235,7 +245,7 @@ async function init() {
         new TripsLayer({
           ...tripsLayer.props,
           data: tripsDataInterp,
-          currentTime: nowSec
+          currentTime: relCurrentTime
         }),
         new ScatterplotLayer({
           ...scatterLayer.props,
