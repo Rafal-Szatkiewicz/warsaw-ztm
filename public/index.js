@@ -73,7 +73,10 @@ function getMockData(interpolated = false, t = 0) {
 }
 
 // --- Dekodowanie protobuf w przeglądarce ---
-import protobuf from 'protobufjs/light';
+
+import * as protobuf from 'protobufjs/light';
+// Flaga do przełączania mocków
+const USE_MOCK = false;
 
 let gtfsRoot = null;
 async function loadGtfsProto() {
