@@ -131,11 +131,14 @@ async function init() {
   let currentTime = 0;
   let maxTrail = HISTORY_LENGTH;
   let lastTripsData = [];
+  let lastFetchTime = Date.now();
+  let nextFetchTime = lastFetchTime + 10000;
 
   async function updateTrips() {
     const tripsData = await fetchBusData();
     lastTripsData = tripsData;
-    // Ustal długość animacji na podstawie historii (lub ustaw na stałą wartość)
+    lastFetchTime = Date.now();
+    nextFetchTime = lastFetchTime + 10000;
     maxTrail = HISTORY_LENGTH;
     // Ustal currentTime na maksymalny czas z timestamps (długość ogona)
     let maxCurrentTime = 0;
@@ -192,11 +195,41 @@ async function init() {
     });
   }
 
+  function interpolateTripsData() {
+    // Zwraca tripsData z interpolowaną głową każdego pojazdu
+    const now = Date.now();
+    const t = Math.min((now - lastFetchTime) / (nextFetchTime - lastFetchTime), 1);
+    return lastTripsData.map(trip => {
+      const hist = trip.path;
+      if (hist.length < 2) return trip;
+      // Ostatni punkt historii
+      const [lon1, lat1] = hist[hist.length - 2];
+      const [lon2, lat2] = hist[hist.length - 1];
+      const lon = lon1 + (lon2 - lon1) * t;
+      const lat = lat1 + (lat2 - lat1) * t;
+      // Nowa path: cała historia + interpolowana głowa
+      const interpPath = [...hist.slice(0, -1), [lon, lat]];
+      // timestamps: wydłużone o interpolację
+      let timestamps = trip.timestamps || [];
+      if (timestamps.length > 1) {
+        const lastTs = timestamps[timestamps.length - 2];
+        const nextTs = timestamps[timestamps.length - 1];
+        const interpTs = lastTs + (nextTs - lastTs) * t;
+        timestamps = [...timestamps.slice(0, -1), interpTs];
+      }
+      return {
+        ...trip,
+        path: interpPath,
+        timestamps: timestamps
+      };
+    });
+  }
+
   function animateTrails() {
-    // Animuj currentTime płynnie od 0 do maxTrail
     currentTime += 0.2;
     if (currentTime > maxTrail) currentTime = 0;
-    // Odśwież tylko TripsLayer, zachowując najnowsze dane
+    // Interpoluj pozycje do nowej lokalizacji
+    const tripsDataInterp = interpolateTripsData();
     const layers = overlay.props && overlay.props.layers ? overlay.props.layers : [];
     const tripsLayer = layers.find(l => l && l.id === 'trips');
     const scatterLayer = layers.find(l => l && l.id === 'bus-points');
@@ -205,10 +238,13 @@ async function init() {
         layers: [
           new TripsLayer({
             ...tripsLayer.props,
-            data: lastTripsData,
+            data: tripsDataInterp,
             currentTime: currentTime
           }),
-          scatterLayer
+          new ScatterplotLayer({
+            ...scatterLayer.props,
+            data: tripsDataInterp
+          })
         ]
       });
     }
