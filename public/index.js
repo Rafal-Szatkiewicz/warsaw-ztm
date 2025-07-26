@@ -2,6 +2,7 @@ import {MapboxOverlay} from '@deck.gl/mapbox';
 import {Map} from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {TripsLayer} from '@deck.gl/geo-layers';
+import {ScatterplotLayer} from '@deck.gl/layers';
 
 // --- KONFIGURACJA DANYCH ---
 // Pobieraj dane GTFS-RT z https://mkuran.pl/gtfs/warsaw/vehicles.pb (brak API key)
@@ -136,7 +137,7 @@ async function init() {
     container: 'map',
   });
 
-  // --- WARSTWA ANIMOWANYCH OGONÓW ---
+  // --- WARSTWA ANIMOWANYCH OGONÓW + PUNKTY ---
   let tripsLayer = new TripsLayer({
     id: 'trips',
     data: [],
@@ -152,8 +153,19 @@ async function init() {
     fadeTrail: true
   });
 
+  let scatterLayer = new ScatterplotLayer({
+    id: 'bus-points',
+    data: [],
+    getPosition: d => d.path[0],
+    getFillColor: [0, 128, 255, 200],
+    getRadius: 40,
+    radiusMinPixels: 6,
+    pickable: true,
+    opacity: 0.95
+  });
+
   const overlay = new MapboxOverlay({
-    layers: [tripsLayer]
+    layers: [tripsLayer, scatterLayer]
   });
   map.addControl(overlay);
 
@@ -176,8 +188,11 @@ async function init() {
       capRounded: true,
       jointRounded: true,
     });
+    scatterLayer = scatterLayer.clone({
+      data: tripsData
+    });
     overlay.setProps({
-      layers: [tripsLayer]
+      layers: [tripsLayer, scatterLayer]
     });
   }
 
