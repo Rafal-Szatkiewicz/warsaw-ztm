@@ -190,26 +190,6 @@ async function init() {
     updateTrips();
   });
 
-  // --- ANIMACJA OGONÓW (tylko tryb live) ---
-  function animateTrails() {
-    if (!USE_MOCK) {
-      currentTime = (currentTime + 0.2) % (maxTrail + 2);
-      // Pobierz ostatnie dane z overlay
-      const layers = overlay.props && overlay.props.layers ? overlay.props.layers : [];
-      const tripsLayer = layers.find(l => l && l.id === 'trips');
-      const scatterLayer = layers.find(l => l && l.id === 'bus-points');
-      if (tripsLayer && scatterLayer) {
-        overlay.setProps({
-          layers: [
-            tripsLayer.clone({ currentTime }),
-            scatterLayer
-          ]
-        });
-      }
-    }
-    animationFrame = requestAnimationFrame(animateTrails);
-  }
-
   // --- ANIMACJA I AKTUALIZACJA ---
   let animationFrame;
   let currentTime = 0;
@@ -220,7 +200,14 @@ async function init() {
     // Ustal długość animacji na podstawie najdłuższej trasy (w sekundach)
     const maxRouteLen = Math.max(...mockRoutes.map(r => r.length));
     maxTrail = maxRouteLen * 10;
-    currentTime = (currentTime + 1) % (maxTrail + 2); // wymuś rerender animacji
+    // Ustal currentTime na maksymalny czas z timestamps (długość ogona)
+    let maxCurrentTime = 0;
+    for (const trip of tripsData) {
+      if (trip.timestamps && trip.timestamps.length > 0) {
+        const last = trip.timestamps[trip.timestamps.length - 1];
+        if (last > maxCurrentTime) maxCurrentTime = last;
+      }
+    }
     const tripsLayer = new TripsLayer({
       id: 'trips',
       data: tripsData,
@@ -232,8 +219,8 @@ async function init() {
       capRounded: true,
       jointRounded: true,
       trailLength: maxTrail,
-      currentTime: currentTime,
-      fadeTrail: true
+      currentTime: maxCurrentTime,
+      fadeTrail: false
     });
     const scatterLayer = new ScatterplotLayer({
       id: 'bus-points',
@@ -266,84 +253,7 @@ async function init() {
     });
   }
 
-  function animate() {
-    // Animacja tylko dla mocków, w trybie live warstwy są aktualizowane przez updateTrips
-    if (USE_MOCK) {
-      let tripsData;
-      let currentTimeAnim;
-      const t = Date.now() - lastUpdateTime;
-      const buses = getMockData(true, t);
-      tripsData = buses.map((bus, i) => {
-        const key = bus.VehicleNumber;
-        let path = (busHistory[key] || []).map(e => [e.lon, e.lat]);
-        path = [...path, [bus.Lon, bus.Lat]];
-        let timestampsRaw = (busHistory[key] || []).map(e => Math.floor(e.time / 1000));
-        let timestamps = timestampsRaw.slice(-path.length);
-        if (timestamps.length > 0) {
-          const t0 = timestamps[0];
-          timestamps = timestamps.map(t => t - t0);
-        }
-        // Dodaj timestamp dla interpolowanego punktu
-        const lastTs = timestamps.length > 0 ? timestamps[timestamps.length-1] : 0;
-        const interpTs = lastTs + (t/10000);
-        timestamps = [...timestamps, interpTs];
-        return {
-          path,
-          timestamps,
-          color: [255, 0, 0, 200]
-        };
-      });
-      // currentTime = upływ czasu od początku trasy (w sekundach)
-      currentTimeAnim = tripsData.length ? tripsData[0].timestamps[tripsData[0].timestamps.length-1] : 0;
-      const tripsLayer = new TripsLayer({
-        id: 'trips',
-        data: tripsData,
-        getPath: d => d.path,
-        getTimestamps: d => d.timestamps,
-        getColor: d => d.color,
-        opacity: 0.85,
-        widthMinPixels: 10,
-        capRounded: true,
-        jointRounded: true,
-        trailLength: maxTrail,
-        currentTime: currentTimeAnim,
-        fadeTrail: true
-      });
-      const scatterLayer = new ScatterplotLayer({
-        id: 'bus-points',
-        data: tripsData,
-        getPosition: d => d.path[d.path.length - 1],
-        getFillColor: [0, 128, 255, 200],
-        getRadius: () => {
-          if (map && typeof map.getZoom === 'function') {
-            const zoom = map.getZoom();
-            return Math.max(6, 60 / Math.pow(1.25, zoom - 10));
-          }
-          return 40;
-        },
-        radiusMinPixels: 2,
-        pickable: true,
-        opacity: 0.95,
-        onHover: info => {
-          if (info.object && info.object.vehicle && info.object.vehicle.VehicleNumber) {
-            tooltipDiv.textContent = `ID: ${info.object.vehicle.VehicleNumber}`;
-            tooltipDiv.style.left = info.x + 10 + 'px';
-            tooltipDiv.style.top = info.y + 10 + 'px';
-            tooltipDiv.style.display = 'block';
-          } else {
-            tooltipDiv.style.display = 'none';
-          }
-        }
-      });
-      overlay.setProps({
-        layers: [tripsLayer, scatterLayer]
-      });
-    }
-    animationFrame = requestAnimationFrame(animate);
-  }
-
   await updateTrips();
-  animateTrails();
   setInterval(updateTrips, 10000);
 }
 
