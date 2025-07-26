@@ -118,8 +118,8 @@ async function fetchBusData() {
     buses.forEach(bus => {
       if (!bus.VehicleNumber) return;
       if (!busHistory[bus.VehicleNumber]) {
-        // Pierwszy fetch: tylko jeden punkt
-        busHistory[bus.VehicleNumber] = [{lon: bus.Lon, lat: bus.Lat, time: bus.Timestamp}];
+        // Pierwszy fetch: tylko jeden punkt, timestamp = teraz
+        busHistory[bus.VehicleNumber] = [{lon: bus.Lon, lat: bus.Lat, time: now}];
         return;
       }
       const hist = busHistory[bus.VehicleNumber];
