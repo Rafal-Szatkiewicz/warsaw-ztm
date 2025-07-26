@@ -198,8 +198,17 @@ async function init() {
     data: [],
     getPosition: d => d.path[0],
     getFillColor: [0, 128, 255, 200],
-    getRadius: 40,
-    radiusMinPixels: 6,
+    // Dynamiczny promień względem zoomu
+    getRadius: () => {
+      // map.getZoom() dostępny po inicjalizacji mapy
+      if (map && typeof map.getZoom === 'function') {
+        const zoom = map.getZoom();
+        // Im większy zoom, tym mniejszy promień (np. 40 przy zoom 10, 10 przy zoom 16)
+        return Math.max(6, 60 / Math.pow(1.25, zoom - 10));
+      }
+      return 40;
+    },
+    radiusMinPixels: 2,
     pickable: true,
     opacity: 0.95,
     onHover: info => {
