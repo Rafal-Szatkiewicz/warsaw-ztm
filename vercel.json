@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/ztm-proxy.js": {
+      "regions": ["fra1"]
+    }
+  }
+}
