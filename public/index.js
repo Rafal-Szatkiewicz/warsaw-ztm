@@ -200,6 +200,7 @@ async function init() {
     // Ustal długość animacji na podstawie najdłuższej trasy (w sekundach)
     const maxRouteLen = Math.max(...mockRoutes.map(r => r.length));
     maxTrail = maxRouteLen * 10;
+    currentTime = (currentTime + 1) % (maxTrail + 2); // wymuś rerender animacji
     const tripsLayer = new TripsLayer({
       id: 'trips',
       data: tripsData,
