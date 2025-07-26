@@ -98,8 +98,8 @@ async function fetchBusData() {
     const buffer = await pbRes.arrayBuffer();
     const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
     const message = FeedMessage.decode(new Uint8Array(buffer));
-    // Loguj cały zdekodowany obiekt jako JSON (uwaga: może być duży)
-    console.log('FeedMessage JSON:', JSON.stringify(FeedMessage.toObject(message), null, 2));
+    // Loguj tylko powiadomienie o fetchu
+    console.log('fetchBusData: pobrano dane GTFS-RT');
     // Wyciągnij pojazdy z pozycją
     const entities = message.entity || [];
     const now = Date.now();
