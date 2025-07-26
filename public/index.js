@@ -196,14 +196,12 @@ async function init() {
   let scatterLayer = new ScatterplotLayer({
     id: 'bus-points',
     data: [],
-    getPosition: d => d.path[0],
+    // Pozycja punktu: ostatni punkt ogona (koniec path)
+    getPosition: d => (d.path && d.path.length ? d.path[d.path.length - 1] : [0, 0]),
     getFillColor: [0, 128, 255, 200],
-    // Dynamiczny promień względem zoomu
     getRadius: () => {
-      // map.getZoom() dostępny po inicjalizacji mapy
       if (map && typeof map.getZoom === 'function') {
         const zoom = map.getZoom();
-        // Im większy zoom, tym mniejszy promień (np. 40 przy zoom 10, 10 przy zoom 16)
         return Math.max(6, 60 / Math.pow(1.25, zoom - 10));
       }
       return 40;
@@ -221,6 +219,14 @@ async function init() {
         tooltipDiv.style.display = 'none';
       }
     }
+  });
+
+  // Dynamiczne przerysowanie scatterLayer przy zmianie zoomu
+  map.on('zoom', () => {
+    scatterLayer = scatterLayer.clone({}); // wymuś ponowną kalkulację getRadius
+    overlay.setProps({
+      layers: [tripsLayer, scatterLayer]
+    });
   });
 
   const overlay = new MapboxOverlay({
