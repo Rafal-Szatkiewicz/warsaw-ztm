@@ -187,8 +187,9 @@ async function init() {
 
   // Dynamiczne przerysowanie scatterLayer przy zmianie zoomu
   map.on('zoom', () => {
-    // Pobierz aktualne dane z warstw
-    const layers = overlay.props.layers || [];
+    // Bezpiecznie pobierz warstwy tylko jeśli overlay.props istnieje
+    if (!overlay.props || !overlay.props.layers) return;
+    const layers = overlay.props.layers;
     const tripsLayer = layers.find(l => l && l.id === 'trips');
     if (!tripsLayer) return; // nie aktualizuj jeśli nie ma warstwy
     const scatterLayer = new ScatterplotLayer({
