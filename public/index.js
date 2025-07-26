@@ -185,42 +185,9 @@ async function init() {
   });
   map.addControl(overlay);
 
-  // Dynamiczne przerysowanie scatterLayer przy zmianie zoomu
+  // Po zoomie odśwież oba layery, aby były zsynchronizowane i rozmiar punktów był aktualny
   map.on('zoom', () => {
-    // Bezpiecznie pobierz warstwy tylko jeśli overlay.props istnieje
-    if (!overlay.props || !overlay.props.layers) return;
-    const layers = overlay.props.layers;
-    const tripsLayer = layers.find(l => l && l.id === 'trips');
-    if (!tripsLayer) return; // nie aktualizuj jeśli nie ma warstwy
-    const scatterLayer = new ScatterplotLayer({
-      id: 'bus-points',
-      data: tripsLayer.props.data,
-      getPosition: d => d.path[d.path.length - 1],
-      getFillColor: [0, 128, 255, 200],
-      getRadius: () => {
-        if (map && typeof map.getZoom === 'function') {
-          const zoom = map.getZoom();
-          return Math.max(6, 60 / Math.pow(1.25, zoom - 10));
-        }
-        return 40;
-      },
-      radiusMinPixels: 2,
-      pickable: true,
-      opacity: 0.95,
-      onHover: info => {
-        if (info.object && info.object.vehicle && info.object.vehicle.VehicleNumber) {
-          tooltipDiv.textContent = `ID: ${info.object.vehicle.VehicleNumber}`;
-          tooltipDiv.style.left = info.x + 10 + 'px';
-          tooltipDiv.style.top = info.y + 10 + 'px';
-          tooltipDiv.style.display = 'block';
-        } else {
-          tooltipDiv.style.display = 'none';
-        }
-      }
-    });
-    overlay.setProps({
-      layers: [tripsLayer, scatterLayer]
-    });
+    updateTrips();
   });
 
   // --- ANIMACJA I AKTUALIZACJA ---
