@@ -23,7 +23,8 @@ export default async function handler(req, res) {
   try {
     const apiRes = await fetch(url, {
       headers: {
-        'User-Agent': 'warsaw-ztm-proxy/1.0 (Vercel)'
+        'User-Agent': 'warsaw-ztm-proxy/1.0 (Vercel)',
+        'Access-Control-Allow-Origin': "*"
       }
     });
     const data = await apiRes.text(); // API ZTM zwraca JSON jako tekst
