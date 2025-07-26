@@ -73,12 +73,8 @@ async function fetchBusData() {
       const hist = busHistory[bus.VehicleNumber] || [];
       // path: [[lon, lat], ...]
       const path = hist.map(e => [e.lon, e.lat]);
-      // timestamps: w sekundach, przesunięte do zera
+      // timestamps: w sekundach (unix time, nie przesuwaj do zera)
       let timestamps = hist.map(e => Math.floor(e.time / 1000));
-      if (timestamps.length > 0) {
-        const t0 = timestamps[0];
-        timestamps = timestamps.map(t => t - t0);
-      }
       return {
         path: path.length ? path : [[bus.Lon, bus.Lat]],
         timestamps: timestamps.length ? timestamps : [0],
@@ -226,29 +222,29 @@ async function init() {
   }
 
   function animateTrails() {
-    currentTime += 0.2;
-    if (currentTime > maxTrail) currentTime = 0;
-    // Interpoluj pozycje do nowej lokalizacji
-    const tripsDataInterp = interpolateTripsData();
-    const layers = overlay.props && overlay.props.layers ? overlay.props.layers : [];
-    const tripsLayer = layers.find(l => l && l.id === 'trips');
-    const scatterLayer = layers.find(l => l && l.id === 'bus-points');
-    if (tripsLayer && scatterLayer) {
-      overlay.setProps({
-        layers: [
-          new TripsLayer({
-            ...tripsLayer.props,
-            data: tripsDataInterp,
-            currentTime: currentTime
-          }),
-          new ScatterplotLayer({
-            ...scatterLayer.props,
-            data: tripsDataInterp
-          })
-        ]
-      });
-    }
-    animationFrame = requestAnimationFrame(animateTrails);
+  // Ustal globalny currentTime (unix timestamp w sekundach)
+  const nowSec = Math.floor(Date.now() / 1000);
+  // Interpoluj pozycje do nowej lokalizacji
+  const tripsDataInterp = interpolateTripsData();
+  const layers = overlay.props && overlay.props.layers ? overlay.props.layers : [];
+  const tripsLayer = layers.find(l => l && l.id === 'trips');
+  const scatterLayer = layers.find(l => l && l.id === 'bus-points');
+  if (tripsLayer && scatterLayer) {
+    overlay.setProps({
+      layers: [
+        new TripsLayer({
+          ...tripsLayer.props,
+          data: tripsDataInterp,
+          currentTime: nowSec
+        }),
+        new ScatterplotLayer({
+          ...scatterLayer.props,
+          data: tripsDataInterp
+        })
+      ]
+    });
+  }
+  animationFrame = requestAnimationFrame(animateTrails);
   }
 
   await updateTrips();
