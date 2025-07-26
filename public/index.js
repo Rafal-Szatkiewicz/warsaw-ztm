@@ -102,6 +102,7 @@ async function fetchBusData() {
     console.log('FeedMessage JSON:', JSON.stringify(FeedMessage.toObject(message), null, 2));
     // Wyciągnij pojazdy z pozycją
     const entities = message.entity || [];
+    const now = Date.now();
     const buses = entities
       .filter(e => e.vehicle && e.vehicle.position)
       .map(e => ({
@@ -110,14 +111,36 @@ async function fetchBusData() {
         Lat: e.vehicle.position.latitude,
         Lines: e.vehicle.trip && e.vehicle.trip.routeId ? e.vehicle.trip.routeId : '',
         Brigade: e.vehicle.vehicle && e.vehicle.vehicle.id ? e.vehicle.vehicle.id : '',
-        Timestamp: e.vehicle.timestamp || null
+        Timestamp: (e.vehicle.timestamp ? e.vehicle.timestamp * 1000 : now)
       }));
+
+    // Aktualizuj historię pozycji
+    buses.forEach(bus => {
+      if (!bus.VehicleNumber) return;
+      if (!busHistory[bus.VehicleNumber]) busHistory[bus.VehicleNumber] = [];
+      // Dodaj nową pozycję tylko jeśli inna niż ostatnia
+      const hist = busHistory[bus.VehicleNumber];
+      const last = hist.length ? hist[hist.length-1] : null;
+      if (!last || last.lon !== bus.Lon || last.lat !== bus.Lat) {
+        hist.push({lon: bus.Lon, lat: bus.Lat, time: bus.Timestamp});
+        if (hist.length > HISTORY_LENGTH) hist.shift();
+      }
+    });
+
     // Zwróć tablicę tripów (każdy autobus jako "trasa" z historią)
     const trips = buses.map(bus => {
-      // Dla uproszczenia: tylko aktualna pozycja
+      const hist = busHistory[bus.VehicleNumber] || [];
+      // path: [[lon, lat], ...]
+      const path = hist.map(e => [e.lon, e.lat]);
+      // timestamps: w sekundach, przesunięte do zera
+      let timestamps = hist.map(e => Math.floor(e.time / 1000));
+      if (timestamps.length > 0) {
+        const t0 = timestamps[0];
+        timestamps = timestamps.map(t => t - t0);
+      }
       return {
-        path: [[bus.Lon, bus.Lat]],
-        timestamps: [0],
+        path: path.length ? path : [[bus.Lon, bus.Lat]],
+        timestamps: timestamps.length ? timestamps : [0],
         color: [255, 0, 0, 200],
         vehicle: bus
       };
