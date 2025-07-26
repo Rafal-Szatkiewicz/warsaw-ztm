@@ -11,7 +11,7 @@ const GTFS_PROTO_URL = 'https://raw.githubusercontent.com/google/transit/master/
 
 // --- POMOCNICZA HISTORIA AUTOBUSÓW ----
 const busHistory = {};
-const HISTORY_LENGTH = 100; // ile pozycji historii trzymać (wydłużony ogon)
+const HISTORY_LENGTH = 3; // ile pozycji historii trzymać (wydłużony ogon)
 
 import * as protobuf from 'protobufjs';
 
