@@ -10,8 +10,12 @@ const VEHICLES_PB_URL = '/api/ztm-proxy';
 const GTFS_PROTO_URL = 'https://raw.githubusercontent.com/google/transit/master/gtfs-realtime/proto/gtfs-realtime.proto';
 
 // --- POMOCNICZA HISTORIA AUTOBUSÓW ----
+// VehicleNumber -> [{lon, lat, time}]
 const busHistory = {};
 const HISTORY_LENGTH = 100; // ile pozycji historii trzymać (wydłużony ogon)
+
+// Flaga do przełączania mocków
+const USE_MOCK = false;
 
 import * as protobuf from 'protobufjs';
 
@@ -130,11 +134,9 @@ async function init() {
   let animationFrame;
   let currentTime = 0;
   let maxTrail = HISTORY_LENGTH;
-  let lastTripsData = [];
 
   async function updateTrips() {
     const tripsData = await fetchBusData();
-    lastTripsData = tripsData;
     // Ustal długość animacji na podstawie historii (lub ustaw na stałą wartość)
     maxTrail = HISTORY_LENGTH;
     // Ustal currentTime na maksymalny czas z timestamps (długość ogona)
@@ -145,8 +147,6 @@ async function init() {
         if (last > maxCurrentTime) maxCurrentTime = last;
       }
     }
-    // Jeśli currentTime przekroczył nowy maxCurrentTime, zresetuj do 0
-    if (currentTime > maxCurrentTime) currentTime = 0;
     const tripsLayer = new TripsLayer({
       id: 'trips',
       data: tripsData,
@@ -158,7 +158,7 @@ async function init() {
       capRounded: true,
       jointRounded: true,
       trailLength: maxTrail,
-      currentTime: currentTime,
+      currentTime: maxCurrentTime,
       fadeTrail: false
     });
     const scatterLayer = new ScatterplotLayer({
@@ -192,31 +192,7 @@ async function init() {
     });
   }
 
-  function animateTrails() {
-    // Animuj currentTime płynnie od 0 do maxTrail
-    currentTime += 0.2;
-    if (currentTime > maxTrail) currentTime = 0;
-    // Odśwież tylko TripsLayer, zachowując najnowsze dane
-    const layers = overlay.props && overlay.props.layers ? overlay.props.layers : [];
-    const tripsLayer = layers.find(l => l && l.id === 'trips');
-    const scatterLayer = layers.find(l => l && l.id === 'bus-points');
-    if (tripsLayer && scatterLayer) {
-      overlay.setProps({
-        layers: [
-          new TripsLayer({
-            ...tripsLayer.props,
-            data: lastTripsData,
-            currentTime: currentTime
-          }),
-          scatterLayer
-        ]
-      });
-    }
-    animationFrame = requestAnimationFrame(animateTrails);
-  }
-
   await updateTrips();
-  animateTrails();
   setInterval(updateTrips, 10000);
 }
 
