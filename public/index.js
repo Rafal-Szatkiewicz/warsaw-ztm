@@ -180,6 +180,19 @@ async function init() {
     fadeTrail: true
   });
 
+  // Dodaj element na tooltip
+  let tooltipDiv = document.createElement('div');
+  tooltipDiv.style.position = 'fixed';
+  tooltipDiv.style.pointerEvents = 'none';
+  tooltipDiv.style.background = 'rgba(0,0,0,0.85)';
+  tooltipDiv.style.color = '#fff';
+  tooltipDiv.style.padding = '4px 8px';
+  tooltipDiv.style.borderRadius = '4px';
+  tooltipDiv.style.fontSize = '14px';
+  tooltipDiv.style.zIndex = 1000;
+  tooltipDiv.style.display = 'none';
+  document.body.appendChild(tooltipDiv);
+
   let scatterLayer = new ScatterplotLayer({
     id: 'bus-points',
     data: [],
@@ -189,8 +202,16 @@ async function init() {
     radiusMinPixels: 6,
     pickable: true,
     opacity: 0.95,
-    // Tooltip z numerem pojazdu
-    getTooltip: ({object}) => object && object.vehicle && object.vehicle.VehicleNumber ? `ID: ${object.vehicle.VehicleNumber}` : null
+    onHover: info => {
+      if (info.object && info.object.vehicle && info.object.vehicle.VehicleNumber) {
+        tooltipDiv.textContent = `ID: ${info.object.vehicle.VehicleNumber}`;
+        tooltipDiv.style.left = info.x + 10 + 'px';
+        tooltipDiv.style.top = info.y + 10 + 'px';
+        tooltipDiv.style.display = 'block';
+      } else {
+        tooltipDiv.style.display = 'none';
+      }
+    }
   });
 
   const overlay = new MapboxOverlay({
