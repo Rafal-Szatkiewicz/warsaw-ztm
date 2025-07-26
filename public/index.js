@@ -74,7 +74,7 @@ function getMockData(interpolated = false, t = 0) {
 
 // --- Dekodowanie protobuf w przeglądarce ---
 
-import * as protobuf from 'protobufjs/light';
+import * as protobuf from 'protobufjs';
 // Flaga do przełączania mocków
 const USE_MOCK = false;
 
