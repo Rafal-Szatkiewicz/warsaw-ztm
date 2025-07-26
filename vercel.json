@@ -1,7 +1,4 @@
 {
-  "functions": {
-    "api/ztm-proxy.js": {
-      "regions": ["fra1"]
-    }
-  }
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["sfo1"]
 }
