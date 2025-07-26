@@ -106,7 +106,7 @@ async function fetchBusData() {
     const buses = entities
       .filter(e => e.vehicle && e.vehicle.position)
       .map(e => ({
-        VehicleNumber: e.vehicle.vehicle && e.vehicle.vehicle.label ? e.vehicle.vehicle.label : '',
+        VehicleNumber: e.vehicle.vehicle && e.vehicle.vehicle.id ? e.vehicle.vehicle.id : '',
         Lon: e.vehicle.position.longitude,
         Lat: e.vehicle.position.latitude,
         Lines: e.vehicle.trip && e.vehicle.trip.routeId ? e.vehicle.trip.routeId : '',
