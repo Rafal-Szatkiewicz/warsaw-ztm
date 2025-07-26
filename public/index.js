@@ -10,74 +10,10 @@ const VEHICLES_PB_URL = '/api/ztm-proxy';
 const GTFS_PROTO_URL = 'https://raw.githubusercontent.com/google/transit/master/gtfs-realtime/proto/gtfs-realtime.proto';
 
 // --- POMOCNICZA HISTORIA AUTOBUSÓW ----
-// VehicleNumber -> [{lon, lat, time}]
 const busHistory = {};
 const HISTORY_LENGTH = 100; // ile pozycji historii trzymać (wydłużony ogon)
 
-// Przykładowe dane testowe (kilka autobusów)
-const mockBuses = [
-  {VehicleNumber: '1000', Lon: 21.0122, Lat: 52.2297, Lines: '225'},
-  {VehicleNumber: '1001', Lon: 21.0222, Lat: 52.2397, Lines: '219'},
-  {VehicleNumber: '1002', Lon: 21.0322, Lat: 52.2197, Lines: '161'}
-];
-// Przykładowe trasy dla każdego autobusu (każdy punkt co 10 sekund)
-const mockRoutes = [
-  // Autobus 1: zakręty, pętla
-  [
-    [21.0122, 52.2297], [21.0135, 52.2310], [21.0150, 52.2300], [21.0165, 52.2315], [21.0180, 52.2290], [21.0122, 52.2297]
-  ],
-  // Autobus 2: zygzak
-  [
-    [21.0222, 52.2397], [21.0230, 52.2410], [21.0250, 52.2400], [21.0270, 52.2420], [21.0290, 52.2390], [21.0222, 52.2397]
-  ],
-  // Autobus 3: trasa z ostrym zakrętem
-  [
-    [21.0322, 52.2197], [21.0340, 52.2205], [21.0360, 52.2212], [21.0380, 52.2200], [21.0400, 52.2180], [21.0370, 52.2170], [21.0322, 52.2197]
-  ]
-];
-let mockRouteStep = 0;
-let mockRouteSteps = {
-  '1000': 0,
-  '1001': 0,
-  '1002': 0
-};
-let lastPositions = [
-  [21.0122, 52.2297],
-  [21.0222, 52.2397],
-  [21.0322, 52.2197]
-];
-let nextPositions = [
-  [21.0122, 52.2297],
-  [21.0222, 52.2397],
-  [21.0322, 52.2197]
-];
-let lastUpdateTime = Date.now();
-
-function getMockData(interpolated = false, t = 0) {
-  // Jeśli interpolated=true, zwróć pozycje interpolowane
-  if (interpolated) {
-    return mockBuses.map((bus, i) => {
-      const [lon1, lat1] = lastPositions[i];
-      const [lon2, lat2] = nextPositions[i];
-      const frac = Math.min(t / 10000, 1); // t w ms, 10s na segment
-      const lon = lon1 + (lon2 - lon1) * frac;
-      const lat = lat1 + (lat2 - lat1) * frac;
-      return {...bus, Lon: lon, Lat: lat};
-    });
-  }
-  // Zwykły mock: przesuwaj do kolejnego punktu
-  return mockBuses.map((bus, i) => {
-    const route = mockRoutes[i];
-    const idx = mockRouteSteps[bus.VehicleNumber] % route.length;
-    return {...bus, Lon: route[idx][0], Lat: route[idx][1]};
-  });
-}
-
-// --- Dekodowanie protobuf w przeglądarce ---
-
 import * as protobuf from 'protobufjs';
-// Flaga do przełączania mocków
-const USE_MOCK = false;
 
 let gtfsRoot = null;
 async function loadGtfsProto() {
@@ -197,9 +133,8 @@ async function init() {
 
   async function updateTrips() {
     const tripsData = await fetchBusData();
-    // Ustal długość animacji na podstawie najdłuższej trasy (w sekundach)
-    const maxRouteLen = Math.max(...mockRoutes.map(r => r.length));
-    maxTrail = maxRouteLen * 10;
+    // Ustal długość animacji na podstawie historii (lub ustaw na stałą wartość)
+    maxTrail = HISTORY_LENGTH;
     // Ustal currentTime na maksymalny czas z timestamps (długość ogona)
     let maxCurrentTime = 0;
     for (const trip of tripsData) {
