@@ -190,9 +190,10 @@ async function init() {
     // Pobierz aktualne dane z warstw
     const layers = overlay.props.layers || [];
     const tripsLayer = layers.find(l => l && l.id === 'trips');
+    if (!tripsLayer) return; // nie aktualizuj jeśli nie ma warstwy
     const scatterLayer = new ScatterplotLayer({
       id: 'bus-points',
-      data: tripsLayer ? tripsLayer.props.data : [],
+      data: tripsLayer.props.data,
       getPosition: d => d.path[d.path.length - 1],
       getFillColor: [0, 128, 255, 200],
       getRadius: () => {
