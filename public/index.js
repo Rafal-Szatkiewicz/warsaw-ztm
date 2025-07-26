@@ -117,11 +117,15 @@ async function fetchBusData() {
     // Aktualizuj historię pozycji
     buses.forEach(bus => {
       if (!bus.VehicleNumber) return;
-      if (!busHistory[bus.VehicleNumber]) busHistory[bus.VehicleNumber] = [];
-      // Dodaj nową pozycję tylko jeśli inna niż ostatnia
+      if (!busHistory[bus.VehicleNumber]) {
+        // Pierwszy fetch: tylko jeden punkt
+        busHistory[bus.VehicleNumber] = [{lon: bus.Lon, lat: bus.Lat, time: bus.Timestamp}];
+        return;
+      }
       const hist = busHistory[bus.VehicleNumber];
       const last = hist.length ? hist[hist.length-1] : null;
-      if (!last || last.lon !== bus.Lon || last.lat !== bus.Lat) {
+      // Dodaj nową pozycję tylko jeśli inna niż ostatnia (pozycja lub timestamp)
+      if (!last || last.lon !== bus.Lon || last.lat !== bus.Lat || last.time !== bus.Timestamp) {
         hist.push({lon: bus.Lon, lat: bus.Lat, time: bus.Timestamp});
         if (hist.length > HISTORY_LENGTH) hist.shift();
       }
