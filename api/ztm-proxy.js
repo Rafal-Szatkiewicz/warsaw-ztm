@@ -27,12 +27,21 @@ export default async function handler(req, res) {
         'Access-Control-Allow-Origin': "*"
       }
     });
-    const data = await apiRes.text(); // API ZTM zwraca JSON jako tekst
-    // Dodaj nagłówki CORS
+
+    if (!apiRes.ok) {
+      const errText = await apiRes.text();
+      console.error(`ZTM fetch error: ${apiRes.status} - ${errText}`);
+      throw new Error(`ZTM API returned ${apiRes.status}`);
+    }
+
+
+    const data = await apiRes.text(); 
+    
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/json');
     res.status(200).send(data);
   } catch (err) {
+    console.error('Proxy error:', err.stack || err.message);
     res.status(500).json({ error: 'Proxy error', details: err.message });
   }
 }
