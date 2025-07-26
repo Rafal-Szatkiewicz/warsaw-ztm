@@ -190,6 +190,26 @@ async function init() {
     updateTrips();
   });
 
+  // --- ANIMACJA OGONÓW (tylko tryb live) ---
+  function animateTrails() {
+    if (!USE_MOCK) {
+      currentTime = (currentTime + 0.2) % (maxTrail + 2);
+      // Pobierz ostatnie dane z overlay
+      const layers = overlay.props && overlay.props.layers ? overlay.props.layers : [];
+      const tripsLayer = layers.find(l => l && l.id === 'trips');
+      const scatterLayer = layers.find(l => l && l.id === 'bus-points');
+      if (tripsLayer && scatterLayer) {
+        overlay.setProps({
+          layers: [
+            tripsLayer.clone({ currentTime }),
+            scatterLayer
+          ]
+        });
+      }
+    }
+    animationFrame = requestAnimationFrame(animateTrails);
+  }
+
   // --- ANIMACJA I AKTUALIZACJA ---
   let animationFrame;
   let currentTime = 0;
@@ -323,7 +343,7 @@ async function init() {
   }
 
   await updateTrips();
-  animate();
+  animateTrails();
   setInterval(updateTrips, 10000);
 }
 
