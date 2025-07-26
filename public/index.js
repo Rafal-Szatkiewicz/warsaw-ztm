@@ -197,7 +197,7 @@ async function init() {
     id: 'bus-points',
     data: [],
     // Pozycja punktu: ostatni punkt ogona (koniec path)
-    getPosition: d => (d.path && d.path.length ? d.path[d.path.length - 1] : [0, 0]),
+    getPosition: d => d.path[0],
     getFillColor: [0, 128, 255, 200],
     getRadius: () => {
       if (map && typeof map.getZoom === 'function') {
