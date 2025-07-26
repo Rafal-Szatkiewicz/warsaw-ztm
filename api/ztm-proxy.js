@@ -33,6 +33,11 @@ export default async function handler(req, res) {
       console.error(`ZTM fetch error: ${apiRes.status} - ${errText}`);
       throw new Error(`ZTM API returned ${apiRes.status}`);
     }
+    else
+    {
+      const errText = await apiRes.text();
+      console.error(`ZTM fetch error: ${apiRes.status} - ${errText}`);
+    }
 
 
     const data = await apiRes.text(); 
