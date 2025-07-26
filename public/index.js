@@ -73,8 +73,12 @@ async function fetchBusData() {
       const hist = busHistory[bus.VehicleNumber] || [];
       // path: [[lon, lat], ...]
       const path = hist.map(e => [e.lon, e.lat]);
-      // timestamps: w sekundach (unix time, nie przesuwaj do zera)
+      // timestamps: w sekundach, przesunięte do zera
       let timestamps = hist.map(e => Math.floor(e.time / 1000));
+      if (timestamps.length > 0) {
+        const t0 = timestamps[0];
+        timestamps = timestamps.map(t => t - t0);
+      }
       return {
         path: path.length ? path : [[bus.Lon, bus.Lat]],
         timestamps: timestamps.length ? timestamps : [0],
@@ -127,14 +131,11 @@ async function init() {
   let currentTime = 0;
   let maxTrail = HISTORY_LENGTH;
   let lastTripsData = [];
-  let lastFetchTime = Date.now();
-  let nextFetchTime = lastFetchTime + 10000;
 
   async function updateTrips() {
     const tripsData = await fetchBusData();
     lastTripsData = tripsData;
-    lastFetchTime = Date.now();
-    nextFetchTime = lastFetchTime + 10000;
+    // Ustal długość animacji na podstawie historii (lub ustaw na stałą wartość)
     maxTrail = HISTORY_LENGTH;
     // Ustal currentTime na maksymalny czas z timestamps (długość ogona)
     let maxCurrentTime = 0;
@@ -191,28 +192,11 @@ async function init() {
     });
   }
 
-  // Usunięto interpolateTripsData – nie interpolujemy głowy, tylko pokazujemy historię
-
   function animateTrails() {
-    // Wyznacz najstarszy i najnowszy timestamp z wszystkich tripów
-    let t0 = null, tN = null;
-    for (const trip of lastTripsData) {
-      if (trip.timestamps && trip.timestamps.length > 0) {
-        const first = trip.timestamps[0];
-        const last = trip.timestamps[trip.timestamps.length - 1];
-        if (t0 === null || first < t0) t0 = first;
-        if (tN === null || last > tN) tN = last;
-      }
-    }
-    if (t0 === null) t0 = Math.floor(Date.now() / 1000);
-    if (tN === null) tN = t0 + 10;
-    // currentTime: animuj od t0 do tN
-    const nowSec = Date.now() / 1000;
-    let relCurrentTime = nowSec;
-    if (relCurrentTime < t0) relCurrentTime = t0;
-    if (relCurrentTime > tN) relCurrentTime = t0; // pętla
-    // Użyj tylko historycznych danych, bez interpolacji
-    const tripsDataHist = lastTripsData;
+    // Animuj currentTime płynnie od 0 do maxTrail
+    currentTime += 0.2;
+    if (currentTime > maxTrail) currentTime = 0;
+    // Odśwież tylko TripsLayer, zachowując najnowsze dane
     const layers = overlay.props && overlay.props.layers ? overlay.props.layers : [];
     const tripsLayer = layers.find(l => l && l.id === 'trips');
     const scatterLayer = layers.find(l => l && l.id === 'bus-points');
@@ -221,13 +205,10 @@ async function init() {
         layers: [
           new TripsLayer({
             ...tripsLayer.props,
-            data: tripsDataHist,
-            currentTime: relCurrentTime
+            data: lastTripsData,
+            currentTime: currentTime
           }),
-          new ScatterplotLayer({
-            ...scatterLayer.props,
-            data: tripsDataHist
-          })
+          scatterLayer
         ]
       });
     }
