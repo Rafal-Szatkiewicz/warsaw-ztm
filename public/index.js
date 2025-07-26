@@ -224,15 +224,26 @@ async function init() {
       });
       // currentTime = upływ czasu od początku trasy (w sekundach)
       currentTimeAnim = tripsData.length ? tripsData[0].timestamps[tripsData[0].timestamps.length-1] : 0;
+      overlay.setProps({
+        layers: [
+          tripsLayer.clone({
+            data: tripsData,
+            currentTime: currentTimeAnim
+          }),
+          scatterLayer.clone({
+            data: tripsData
+          })
+        ]
+      });
     } else {
       currentTimeAnim = (currentTime + 0.2) % (maxTrail + 2);
+      overlay.setProps({
+        layers: [
+          tripsLayer,
+          scatterLayer
+        ]
+      });
     }
-    overlay.setProps({
-      layers: [tripsLayer.clone({
-        data: USE_MOCK ? tripsData : undefined,
-        currentTime: currentTimeAnim
-      })]
-    });
     animationFrame = requestAnimationFrame(animate);
   }
 
