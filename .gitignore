@@ -1,2 +1,4 @@
 node_modules
 test-ztm-api.js
+decode-vehicles.js
+ztm-proxy.js

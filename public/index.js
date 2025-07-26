@@ -3,12 +3,10 @@ import {Map} from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {TripsLayer} from '@deck.gl/geo-layers';
 
-// --- KONFIGURACJA API ---
-// Frontend nie używa dotenv ani process.env! Klucz API jest w proxy.
-const API_URL = `/api/ztm-proxy?resource_id=f2e5503e927d-4ad3-9500-4ab9e55deb59&type=1`;
-console.log('API URL:', API_URL);
-const USE_MOCK = false; // Ustaw na true jeśli chcesz wymusić mock, np. lokalnie bez proxy
-console.log('Using mock data:', USE_MOCK);
+// --- KONFIGURACJA DANYCH ---
+// Pobieraj dane GTFS-RT z https://mkuran.pl/gtfs/warsaw/vehicles.pb (brak API key)
+const VEHICLES_PB_URL = 'https://mkuran.pl/gtfs/warsaw/vehicles.pb';
+const GTFS_PROTO_URL = 'https://raw.githubusercontent.com/google/transit/master/gtfs-realtime/proto/gtfs-realtime.proto';
 
 // --- POMOCNICZA HISTORIA AUTOBUSÓW ----
 // VehicleNumber -> [{lon, lat, time}]
@@ -74,52 +72,50 @@ function getMockData(interpolated = false, t = 0) {
   });
 }
 
+// --- Dekodowanie protobuf w przeglądarce ---
+import protobuf from 'protobufjs/light';
+
+let gtfsRoot = null;
+async function loadGtfsProto() {
+  if (gtfsRoot) return gtfsRoot;
+  const res = await fetch(GTFS_PROTO_URL);
+  const protoText = await res.text();
+  gtfsRoot = protobuf.parse(protoText).root;
+  return gtfsRoot;
+}
+
 async function fetchBusData() {
   try {
-    let buses;
-    if (USE_MOCK) {
-      // Przy updateTrips: przesuwaj do kolejnego punktu
-      buses = getMockData();
-      buses.forEach((bus, i) => {
-        const key = bus.VehicleNumber;
-        const route = mockRoutes[i];
-        // Zaktualizuj pozycje do interpolacji
-        lastPositions[i] = nextPositions[i];
-        mockRouteSteps[key] = (mockRouteSteps[key] + 1) % route.length;
-        nextPositions[i] = route[mockRouteSteps[key]];
-        lastUpdateTime = Date.now();
-        // Dodaj do historii
-        const entry = {lon: Number(bus.Lon), lat: Number(bus.Lat), time: Date.now()};
-        if (!busHistory[key]) busHistory[key] = [];
-        const arr = busHistory[key];
-        arr.push(entry);
-        if (arr.length > HISTORY_LENGTH) arr.shift();
-      });
-    } else {
-      const res = await fetch(API_URL);
-      const json = await res.json();
-      buses = json.result || [];
-      console.log(buses);
-    }
+    // Pobierz plik protobuf
+    const [root, pbRes] = await Promise.all([
+      loadGtfsProto(),
+      fetch(VEHICLES_PB_URL)
+    ]);
+    const buffer = await pbRes.arrayBuffer();
+    const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
+    const message = FeedMessage.decode(new Uint8Array(buffer));
+    // Wyciągnij pojazdy z pozycją
+    const entities = message.entity || [];
+    const buses = entities
+      .filter(e => e.vehicle && e.vehicle.position)
+      .map(e => ({
+        VehicleNumber: e.vehicle.vehicle && e.vehicle.vehicle.label ? e.vehicle.vehicle.label : '',
+        Lon: e.vehicle.position.longitude,
+        Lat: e.vehicle.position.latitude,
+        Lines: e.vehicle.trip && e.vehicle.trip.routeId ? e.vehicle.trip.routeId : '',
+        Brigade: e.vehicle.vehicle && e.vehicle.vehicle.id ? e.vehicle.vehicle.id : '',
+        Timestamp: e.vehicle.timestamp || null
+      }));
     // Zwróć tablicę tripów (każdy autobus jako "trasa" z historią)
     const trips = buses.map(bus => {
-      let path = (busHistory[bus.VehicleNumber] || []).map(e => [e.lon, e.lat]);
-      let timestampsRaw = (busHistory[bus.VehicleNumber] || []).map(e => Math.floor(e.time / 1000));
-      // Ogon tylko jeśli są co najmniej 2 różne punkty
-      const unique = path.filter((p, i, arr) => i === 0 || p[0] !== arr[i-1][0] || p[1] !== arr[i-1][1]);
-      if (unique.length < 2) return null;
-      // timestamps relatywne do pierwszego punktu
-      let timestamps = timestampsRaw.slice(-unique.length);
-      if (timestamps.length > 0) {
-        const t0 = timestamps[0];
-        timestamps = timestamps.map(t => t - t0);
-      }
+      // Dla uproszczenia: tylko aktualna pozycja
       return {
-        path: unique,
-        timestamps,
-        color: [255, 0, 0, 200]
+        path: [[bus.Lon, bus.Lat]],
+        timestamps: [0],
+        color: [255, 0, 0, 200],
+        vehicle: bus
       };
-    }).filter(Boolean);
+    });
     return trips;
   } catch (e) {
     console.error('Błąd pobierania danych autobusów:', e);
