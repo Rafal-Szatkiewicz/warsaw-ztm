@@ -188,7 +188,9 @@ async function init() {
     getRadius: 40,
     radiusMinPixels: 6,
     pickable: true,
-    opacity: 0.95
+    opacity: 0.95,
+    // Tooltip z numerem pojazdu
+    getTooltip: ({object}) => object && object.vehicle && object.vehicle.VehicleNumber ? `ID: ${object.vehicle.VehicleNumber}` : null
   });
 
   const overlay = new MapboxOverlay({
