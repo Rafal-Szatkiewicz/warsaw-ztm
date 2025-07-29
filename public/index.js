@@ -72,20 +72,40 @@ async function fetchBusData() {
       }
     });
 
-    // Zwróć tablicę tripów (każdy autobus jako "trasa" z historią)
+    // Interpolacja głowy ogona jak w mocku
     const trips = buses.map(bus => {
       const hist = busHistory[bus.VehicleNumber] || [];
-      // path: [[lon, lat], ...]
-      const path = hist.map(e => [e.lon, e.lat]);
-      // timestamps: w sekundach, przesunięte do zera
-      let timestamps = hist.map(e => Math.floor(e.time / 1000));
+      let path = hist.map(e => [e.lon, e.lat]);
+      let timestampsRaw = hist.map(e => Math.floor(e.time / 1000));
+      // Dodaj interpolowany punkt jeśli jest nowa pozycja
+      let last = path.length ? path[path.length-1] : [bus.Lon, bus.Lat];
+      let next = [bus.Lon, bus.Lat];
+      let tInterp = 0;
+      if (last[0] !== next[0] || last[1] !== next[1]) {
+        // Nowy punkt, interpoluj od ostatniego do nowego
+        tInterp = Math.min(1, (Date.now() - lastFetchTime) / FETCH_INTERVAL);
+        const interp = [
+          last[0] + (next[0] - last[0]) * tInterp,
+          last[1] + (next[1] - last[1]) * tInterp
+        ];
+        path = [...path, interp];
+      } else {
+        // Brak nowego punktu, głowa ogona stoi
+        path = [...path, next];
+      }
+      // timestamps
+      let timestamps = timestampsRaw.slice();
       if (timestamps.length > 0) {
         const t0 = timestamps[0];
         timestamps = timestamps.map(t => t - t0);
       }
+      // Dodaj timestamp dla interpolowanego punktu
+      const lastTs = timestamps.length > 0 ? timestamps[timestamps.length-1] : 0;
+      const interpTs = lastTs + tInterp * (FETCH_INTERVAL / 1000);
+      timestamps = [...timestamps, interpTs];
       return {
-        path: path.length ? path : [[bus.Lon, bus.Lat]],
-        timestamps: timestamps.length ? timestamps : [0],
+        path,
+        timestamps,
         color: [255, 0, 0, 200],
         vehicle: bus
       };
