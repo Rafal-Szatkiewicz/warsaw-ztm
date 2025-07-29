@@ -39,7 +39,7 @@ async function fetchBusData() {
     const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
     const message = FeedMessage.decode(new Uint8Array(buffer));
     // Loguj zdekodowany FeedMessage jako JSON
-    console.log('FeedMessage JSON:', JSON.stringify(FeedMessage.toObject(message), null, 2));
+    console.log("Fetched new data");
     // Wyciągnij pojazdy z pozycją
     const entities = message.entity || [];
     const now = Date.now();
@@ -77,24 +77,23 @@ async function fetchBusData() {
       }
     });
 
-    // Zwróć tablicę tripów: każdy segment historii jako osobny trip (płynna animacja między punktami)
-    const trips = [];
-    buses.forEach(bus => {
+    // Zwróć tablicę tripów (każdy autobus jako "trasa" z historią)
+    const trips = buses.map(bus => {
       const hist = busHistory[bus.VehicleNumber] || [];
-      for (let i = 1; i < hist.length; i++) {
-        const prev = hist[i - 1];
-        const curr = hist[i];
-        // Każdy segment to osobny trip
-        trips.push({
-          path: [ [prev.lon, prev.lat], [curr.lon, curr.lat] ],
-          timestamps: [
-            Math.floor(prev.time / 1000),
-            Math.floor(curr.time / 1000)
-          ],
-          color: [255, 0, 0, 200],
-          vehicle: bus
-        });
+      // path: [[lon, lat], ...]
+      const path = hist.map(e => [e.lon, e.lat]);
+      // timestamps: w sekundach, przesunięte do zera
+      let timestamps = hist.map(e => Math.floor(e.time / 1000));
+      if (timestamps.length > 0) {
+        const t0 = timestamps[0];
+        timestamps = timestamps.map(t => t - t0);
       }
+      return {
+        path: path.length ? path : [[bus.Lon, bus.Lat]],
+        timestamps: timestamps.length ? timestamps : [0],
+        color: [255, 0, 0, 200],
+        vehicle: bus
+      };
     });
     return trips;
   } catch (e) {
