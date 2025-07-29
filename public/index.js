@@ -39,7 +39,7 @@ async function fetchBusData() {
     const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
     const message = FeedMessage.decode(new Uint8Array(buffer));
     // Loguj zdekodowany FeedMessage jako JSON
-    console.log('FeedMessage JSON:', JSON.stringify(FeedMessage.toObject(message), null, 2));
+    console.log("Fetchuje dane autobusów z GTFS-RT");
     // Wyciągnij pojazdy z pozycją
     const entities = message.entity || [];
     const now = Date.now();
@@ -139,7 +139,7 @@ async function init() {
   let lastFetchTime = Date.now();
   let nextFetchTime = lastFetchTime + 10000;
   const FETCH_INTERVAL = 10000;
-  const ANIMATION_INTERVAL = FETCH_INTERVAL * 2; // animacja trwa dwa razy dłużej niż fetch
+  const ANIMATION_INTERVAL = FETCH_INTERVAL; // animacja trwa dwa razy dłużej niż fetch
 
   async function updateTrips() {
     const tripsData = await fetchBusData();
