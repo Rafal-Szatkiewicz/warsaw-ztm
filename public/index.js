@@ -105,7 +105,6 @@ async function init() {
     container: 'map',
   });
 
-  // --- WARSTWA ANIMOWANYCH OGONÓW + PUNKTY ---
   // Dodaj element na tooltip
   let tooltipDiv = document.createElement('div');
   tooltipDiv.style.position = 'fixed';
@@ -130,17 +129,83 @@ async function init() {
   });
 
   // --- ANIMACJA I AKTUALIZACJA ---
+
   let animationFrame;
-  let currentTime = 0;
-  let maxTrail = HISTORY_LENGTH;
+  let lastTripsData = [];
+  let prevHeadPositions = {}; // VehicleNumber -> {lon, lat}
+  let nextHeadPositions = {}; // VehicleNumber -> {lon, lat}
+  let lastFetchTime = Date.now();
+  let nextFetchTime = lastFetchTime + 10000;
+  const FETCH_INTERVAL = 10000;
 
   async function updateTrips() {
     const tripsData = await fetchBusData();
-    // Ustal długość animacji na podstawie historii (lub ustaw na stałą wartość)
-    maxTrail = HISTORY_LENGTH;
+    const now = Date.now();
+    lastFetchTime = now;
+    nextFetchTime = now + FETCH_INTERVAL;
+
+    // Zapamiętaj stare i nowe pozycje głowy ogona dla każdego pojazdu
+    prevHeadPositions = {};
+    nextHeadPositions = {};
+    for (const trip of tripsData) {
+      const vehicleId = trip.vehicle && trip.vehicle.VehicleNumber;
+      if (!vehicleId) continue;
+      // Stara pozycja głowy (z poprzedniego fetchu)
+      const prevTrip = lastTripsData.find(t => t.vehicle && t.vehicle.VehicleNumber === vehicleId);
+      if (prevTrip && prevTrip.path && prevTrip.path.length > 0) {
+        prevHeadPositions[vehicleId] = {
+          lon: prevTrip.path[prevTrip.path.length - 1][0],
+          lat: prevTrip.path[prevTrip.path.length - 1][1]
+        };
+      } else if (trip.path && trip.path.length > 0) {
+        prevHeadPositions[vehicleId] = {
+          lon: trip.path[trip.path.length - 1][0],
+          lat: trip.path[trip.path.length - 1][1]
+        };
+      }
+      // Nowa pozycja głowy (z obecnego fetchu)
+      if (trip.path && trip.path.length > 0) {
+        nextHeadPositions[vehicleId] = {
+          lon: trip.path[trip.path.length - 1][0],
+          lat: trip.path[trip.path.length - 1][1]
+        };
+      }
+    }
+    lastTripsData = tripsData;
+  }
+
+  function lerp(a, b, t) {
+    return a + (b - a) * t;
+  }
+
+  function animate() {
+    const now = Date.now();
+    const t = Math.min(1, (now - lastFetchTime) / (nextFetchTime - lastFetchTime));
+    // Interpoluj pozycje głowy ogona dla każdego pojazdu
+    const animatedTrips = lastTripsData.map(trip => {
+      const vehicleId = trip.vehicle && trip.vehicle.VehicleNumber;
+      if (!vehicleId) return trip;
+      const prevHead = prevHeadPositions[vehicleId];
+      const nextHead = nextHeadPositions[vehicleId];
+      let animatedPath = trip.path.slice();
+      if (prevHead && nextHead && animatedPath.length > 1) {
+        // Interpoluj głowę ogona
+        const lastIdx = animatedPath.length - 1;
+        const interpLon = lerp(prevHead.lon, nextHead.lon, t);
+        const interpLat = lerp(prevHead.lat, nextHead.lat, t);
+        animatedPath[lastIdx] = [interpLon, interpLat];
+      }
+      return {
+        ...trip,
+        path: animatedPath
+      };
+    });
+
+    // Ustal trailLength na długość historii
+    const maxTrail = HISTORY_LENGTH;
     // Ustal currentTime na maksymalny czas z timestamps (długość ogona)
     let maxCurrentTime = 0;
-    for (const trip of tripsData) {
+    for (const trip of animatedTrips) {
       if (trip.timestamps && trip.timestamps.length > 0) {
         const last = trip.timestamps[trip.timestamps.length - 1];
         if (last > maxCurrentTime) maxCurrentTime = last;
@@ -148,7 +213,7 @@ async function init() {
     }
     const tripsLayer = new TripsLayer({
       id: 'trips',
-      data: tripsData,
+      data: animatedTrips,
       getPath: d => d.path,
       getTimestamps: d => d.timestamps,
       getColor: d => d.color,
@@ -162,7 +227,7 @@ async function init() {
     });
     const scatterLayer = new ScatterplotLayer({
       id: 'bus-points',
-      data: tripsData,
+      data: animatedTrips,
       getPosition: d => d.path[d.path.length - 1],
       getFillColor: [0, 128, 255, 200],
       getRadius: () => {
@@ -189,10 +254,14 @@ async function init() {
     overlay.setProps({
       layers: [tripsLayer, scatterLayer]
     });
+    animationFrame = requestAnimationFrame(animate);
   }
 
   await updateTrips();
-  setInterval(updateTrips, 10000);
+  animate();
+  setInterval(async () => {
+    await updateTrips();
+  }, FETCH_INTERVAL);
 }
 
 document.addEventListener('DOMContentLoaded', init);
