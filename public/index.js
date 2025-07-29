@@ -65,10 +65,9 @@ async function fetchBusData() {
       }
       const hist = busHistory[bus.VehicleNumber];
       const last = hist.length ? hist[hist.length-1] : null;
-      // Jeśli timestamp się cofa lub powtarza, zresetuj historię (uniknij glitchy)
+      // Dodaj nową pozycję tylko jeśli timestamp jest większy niż ostatni (uniknij duplikatów i cofania)
       if (last && bus.Timestamp <= last.time) {
-        console.warn(`Resetting history for bus ${bus.VehicleNumber} (timestamp went backward or duplicate)`);
-        busHistory[bus.VehicleNumber] = [{lon: bus.Lon, lat: bus.Lat, time: bus.Timestamp}];
+        // Nie resetuj historii, po prostu pomiń ten punkt
         return;
       }
       // Dodaj nową pozycję tylko jeśli inna niż ostatnia (pozycja lub timestamp)
