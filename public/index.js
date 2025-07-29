@@ -139,7 +139,7 @@ async function init() {
   let lastFetchTime = Date.now();
   let nextFetchTime = lastFetchTime + 10000;
   const FETCH_INTERVAL = 10000;
-  const ANIMATION_INTERVAL = Math.round(FETCH_INTERVAL * 1.2); // animacja trwa dłużej niż fetch
+  const ANIMATION_INTERVAL = FETCH_INTERVAL * 2; // animacja trwa dwa razy dłużej niż fetch
 
   async function updateTrips() {
     const tripsData = await fetchBusData();
