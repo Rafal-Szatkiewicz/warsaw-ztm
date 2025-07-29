@@ -39,7 +39,7 @@ async function fetchBusData() {
     const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
     const message = FeedMessage.decode(new Uint8Array(buffer));
     // Loguj zdekodowany FeedMessage jako JSON
-    console.log('FeedMessage JSON:', JSON.stringify(FeedMessage.toObject(message), null, 2));
+    console.log("Fetched new data");
     // Wyciągnij pojazdy z pozycją
     const entities = message.entity || [];
     const now = Date.now();
@@ -203,55 +203,22 @@ async function init() {
 
   function animate() {
     const now = Date.now();
-    // Opóźnij animację, by dojeżdżała do punktu po fetchu, a nie przed
-    const t = Math.min(1, (now - lastFetchTime) / (nextFetchTime - lastFetchTime));
-    // Interpoluj pozycje głowy ogona dla każdego pojazdu
-    const animatedTrips = lastTripsData.map(trip => {
-      const vehicleId = trip.vehicle && trip.vehicle.VehicleNumber;
-      if (!vehicleId) return trip;
-      const prevHead = prevHeadPositions[vehicleId];
-      const nextHead = nextHeadPositions[vehicleId];
-      let animatedPath = trip.path.slice();
-      if (prevHead && nextHead && animatedPath.length > 1) {
-        // Interpoluj głowę ogona
-        const lastIdx = animatedPath.length - 1;
-        const interpLon = lerp(prevHead.lon, nextHead.lon, t);
-        const interpLat = lerp(prevHead.lat, nextHead.lat, t);
-        animatedPath[lastIdx] = [interpLon, interpLat];
-      }
-      return {
-        ...trip,
-        path: animatedPath
-      };
-    });
-
-    // Ustal trailLength na długość historii
-    const maxTrail = HISTORY_LENGTH;
+    // Animuj currentTime liniowo po całej historii
     // Ustal maxCurrentTime na podstawie najdłuższej historii
     let maxCurrentTime = 0;
-    let prevCurrentTime = 0;
-    for (const trip of animatedTrips) {
-      if (trip.timestamps && trip.timestamps.length > 1) {
+    for (const trip of lastTripsData) {
+      if (trip.timestamps && trip.timestamps.length > 0) {
         const last = trip.timestamps[trip.timestamps.length - 1];
-        const prev = trip.timestamps[trip.timestamps.length - 2];
-        if (last > maxCurrentTime) {
-          maxCurrentTime = last;
-          prevCurrentTime = prev;
-        }
-      } else if (trip.timestamps && trip.timestamps.length > 0) {
-        const last = trip.timestamps[trip.timestamps.length - 1];
-        if (last > maxCurrentTime) {
-          maxCurrentTime = last;
-          prevCurrentTime = last - 10; // fallback na 10s
-        }
+        if (last > maxCurrentTime) maxCurrentTime = last;
       }
     }
-    // currentTime animowany tylko po ostatnim odcinku (ostatni punkt historii)
-    const delta = Math.max(2, maxCurrentTime - prevCurrentTime); // minimum 2s, żeby nie znikało za szybko
-    const animatedCurrentTime = prevCurrentTime + t * delta;
+    // currentTime rośnie od 0 do maxCurrentTime w pętli
+    const animDuration = ANIMATION_INTERVAL;
+    const t = ((now - lastFetchTime) % animDuration) / animDuration;
+    const animatedCurrentTime = t * maxCurrentTime;
     const tripsLayer = new TripsLayer({
       id: 'trips',
-      data: animatedTrips,
+      data: lastTripsData,
       getPath: d => d.path,
       getTimestamps: d => d.timestamps,
       getColor: d => d.color,
@@ -259,13 +226,13 @@ async function init() {
       widthMinPixels: 10,
       capRounded: true,
       jointRounded: true,
-      trailLength: maxTrail,
+      trailLength: HISTORY_LENGTH,
       currentTime: animatedCurrentTime,
       fadeTrail: false
     });
     const scatterLayer = new ScatterplotLayer({
       id: 'bus-points',
-      data: animatedTrips,
+      data: lastTripsData,
       getPosition: d => d.path[d.path.length - 1],
       getFillColor: [0, 128, 255, 200],
       getRadius: () => {
