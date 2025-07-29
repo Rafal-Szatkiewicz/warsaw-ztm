@@ -178,6 +178,7 @@ async function init() {
     return a + (b - a) * t;
   }
 
+
   function animate() {
     const now = Date.now();
     const t = Math.min(1, (now - lastFetchTime) / (nextFetchTime - lastFetchTime));
@@ -203,7 +204,7 @@ async function init() {
 
     // Ustal trailLength na długość historii
     const maxTrail = HISTORY_LENGTH;
-    // Ustal currentTime na maksymalny czas z timestamps (długość ogona)
+    // Ustal maxCurrentTime na podstawie najdłuższej historii
     let maxCurrentTime = 0;
     for (const trip of animatedTrips) {
       if (trip.timestamps && trip.timestamps.length > 0) {
@@ -211,6 +212,8 @@ async function init() {
         if (last > maxCurrentTime) maxCurrentTime = last;
       }
     }
+    // currentTime animowany od 0 do maxCurrentTime
+    const animatedCurrentTime = t * maxCurrentTime;
     const tripsLayer = new TripsLayer({
       id: 'trips',
       data: animatedTrips,
@@ -222,7 +225,7 @@ async function init() {
       capRounded: true,
       jointRounded: true,
       trailLength: maxTrail,
-      currentTime: maxCurrentTime,
+      currentTime: animatedCurrentTime,
       fadeTrail: false
     });
     const scatterLayer = new ScatterplotLayer({
