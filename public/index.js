@@ -39,7 +39,7 @@ async function fetchBusData() {
     const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
     const message = FeedMessage.decode(new Uint8Array(buffer));
     // Loguj zdekodowany FeedMessage jako JSON
-    console.log("Fetchuje dane autobusów z GTFS-RT");
+    console.log('FeedMessage JSON:', JSON.stringify(FeedMessage.toObject(message), null, 2));
     // Wyciągnij pojazdy z pozycją
     const entities = message.entity || [];
     const now = Date.now();
@@ -139,17 +139,29 @@ async function init() {
   let lastFetchTime = Date.now();
   let nextFetchTime = lastFetchTime + 10000;
   const FETCH_INTERVAL = 10000;
-  const ANIMATION_INTERVAL = FETCH_INTERVAL; // animacja trwa dwa razy dłużej niż fetch
+  const ANIMATION_INTERVAL = FETCH_INTERVAL * 2; // animacja trwa dwa razy dłużej niż fetch
 
   async function updateTrips() {
     const tripsData = await fetchBusData();
     const now = Date.now();
-    // Jeśli poprzednia animacja się nie skończyła, kontynuuj płynnie
-    let tPrev = (now - lastFetchTime) / (nextFetchTime - lastFetchTime);
-    if (tPrev > 1 || isNaN(tPrev)) tPrev = 1;
-    // Przesuń lastFetchTime do tyłu o niewykorzystany czas animacji
-    lastFetchTime = now - tPrev * ANIMATION_INTERVAL;
-    nextFetchTime = lastFetchTime + ANIMATION_INTERVAL;
+    let changed = false;
+    // Sprawdź, czy jakikolwiek pojazd zmienił pozycję
+    for (const trip of tripsData) {
+      const vehicleId = trip.vehicle && trip.vehicle.VehicleNumber;
+      if (!vehicleId) continue;
+      const prevTrip = lastTripsData.find(t => t.vehicle && t.vehicle.VehicleNumber === vehicleId);
+      const prevHead = prevTrip && prevTrip.path && prevTrip.path.length > 0 ? prevTrip.path[prevTrip.path.length - 1] : null;
+      const currHead = trip.path && trip.path.length > 0 ? trip.path[trip.path.length - 1] : null;
+      if (!prevHead || !currHead || prevHead[0] !== currHead[0] || prevHead[1] !== currHead[1]) {
+        changed = true;
+        break;
+      }
+    }
+    // Resetuj animację tylko jeśli pojawił się nowy punkt
+    if (changed) {
+      lastFetchTime = now;
+      nextFetchTime = now + ANIMATION_INTERVAL;
+    }
     // Zapamiętaj stare i nowe pozycje głowy ogona dla każdego pojazdu
     prevHeadPositions = {};
     nextHeadPositions = {};
