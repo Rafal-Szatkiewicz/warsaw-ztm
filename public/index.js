@@ -77,23 +77,22 @@ async function fetchBusData() {
       }
     });
 
-    // Zwróć tablicę segmentów (każdy odcinek historii jako osobny trip)
+    // Zwróć tablicę tripów: każdy segment historii jako osobny trip (płynna animacja między punktami)
     const trips = [];
     buses.forEach(bus => {
       const hist = busHistory[bus.VehicleNumber] || [];
-      for (let i = 0; i < hist.length - 1; i++) {
-        const a = hist[i];
-        const b = hist[i + 1];
+      for (let i = 1; i < hist.length; i++) {
+        const prev = hist[i - 1];
+        const curr = hist[i];
         // Każdy segment to osobny trip
         trips.push({
-          path: [ [a.lon, a.lat], [b.lon, b.lat] ],
+          path: [ [prev.lon, prev.lat], [curr.lon, curr.lat] ],
           timestamps: [
-            Math.floor(a.time / 1000),
-            Math.floor(b.time / 1000)
+            Math.floor(prev.time / 1000),
+            Math.floor(curr.time / 1000)
           ],
           color: [255, 0, 0, 200],
-          vehicle: bus,
-          segmentIndex: i
+          vehicle: bus
         });
       }
     });
