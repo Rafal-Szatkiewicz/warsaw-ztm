@@ -144,9 +144,12 @@ async function init() {
   async function updateTrips() {
     const tripsData = await fetchBusData();
     const now = Date.now();
-    // Zawsze ustaw lastFetchTime/nextFetchTime, by animacja była ciągła
-    lastFetchTime = now;
-    nextFetchTime = now + ANIMATION_INTERVAL;
+    // Jeśli poprzednia animacja się nie skończyła, kontynuuj płynnie
+    let tPrev = (now - lastFetchTime) / (nextFetchTime - lastFetchTime);
+    if (tPrev > 1 || isNaN(tPrev)) tPrev = 1;
+    // Przesuń lastFetchTime do tyłu o niewykorzystany czas animacji
+    lastFetchTime = now - tPrev * ANIMATION_INTERVAL;
+    nextFetchTime = lastFetchTime + ANIMATION_INTERVAL;
     // Zapamiętaj stare i nowe pozycje głowy ogona dla każdego pojazdu
     prevHeadPositions = {};
     nextHeadPositions = {};
