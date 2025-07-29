@@ -120,8 +120,7 @@ async function init() {
   document.body.appendChild(tooltipDiv);
 
   const overlay = new MapboxOverlay({
-    layers: [],
-    interleaved: true
+    layers: []
   });
   map.addControl(overlay);
 
