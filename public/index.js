@@ -77,23 +77,25 @@ async function fetchBusData() {
       }
     });
 
-    // Zwróć tablicę tripów (każdy autobus jako "trasa" z historią)
-    const trips = buses.map(bus => {
+    // Zwróć tablicę segmentów (każdy odcinek historii jako osobny trip)
+    const trips = [];
+    buses.forEach(bus => {
       const hist = busHistory[bus.VehicleNumber] || [];
-      // path: [[lon, lat], ...]
-      const path = hist.map(e => [e.lon, e.lat]);
-      // timestamps: w sekundach, przesunięte do zera
-      let timestamps = hist.map(e => Math.floor(e.time / 1000));
-      if (timestamps.length > 0) {
-        const t0 = timestamps[0];
-        timestamps = timestamps.map(t => t - t0);
+      for (let i = 0; i < hist.length - 1; i++) {
+        const a = hist[i];
+        const b = hist[i + 1];
+        // Każdy segment to osobny trip
+        trips.push({
+          path: [ [a.lon, a.lat], [b.lon, b.lat] ],
+          timestamps: [
+            Math.floor(a.time / 1000),
+            Math.floor(b.time / 1000)
+          ],
+          color: [255, 0, 0, 200],
+          vehicle: bus,
+          segmentIndex: i
+        });
       }
-      return {
-        path: path.length ? path : [[bus.Lon, bus.Lat]],
-        timestamps: timestamps.length ? timestamps : [0],
-        color: [255, 0, 0, 200],
-        vehicle: bus
-      };
     });
     return trips;
   } catch (e) {
