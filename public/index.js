@@ -55,41 +55,66 @@ async function fetchBusData() {
       }))
       .filter(bus => bus.VehicleNumber !== 'V/10/9');
 
-    // Aktualizuj historię pozycji
-    buses.forEach(bus => {
-      if (!bus.VehicleNumber) return;
-      if (!busHistory[bus.VehicleNumber]) {
-        // Pierwszy fetch: tylko jeden punkt, timestamp = teraz
-        busHistory[bus.VehicleNumber] = [{lon: bus.Lon, lat: bus.Lat, time: now}];
-        return;
-      }
-      const hist = busHistory[bus.VehicleNumber];
-      const last = hist.length ? hist[hist.length-1] : null;
-      // Dodaj nową pozycję tylko jeśli inna niż ostatnia (pozycja lub timestamp)
-      if (!last || last.lon !== bus.Lon || last.lat !== bus.Lat || last.time !== bus.Timestamp) {
-        hist.push({lon: bus.Lon, lat: bus.Lat, time: bus.Timestamp});
-        if (hist.length > HISTORY_LENGTH) hist.shift();
-      }
-    });
+// --- INTERPOLACJA GŁOWY OGONA ---
+// Nowy punkt nie jest od razu dodawany do historii, tylko interpolowany
+const pendingHead = {};
+const pendingHeadTime = {};
 
-    // Zwróć tablicę tripów (każdy autobus jako "trasa" z historią)
-    const trips = buses.map(bus => {
-      const hist = busHistory[bus.VehicleNumber] || [];
-      // path: [[lon, lat], ...]
-      const path = hist.map(e => [e.lon, e.lat]);
-      // timestamps: w sekundach, przesunięte do zera
-      let timestamps = hist.map(e => Math.floor(e.time / 1000));
-      if (timestamps.length > 0) {
-        const t0 = timestamps[0];
-        timestamps = timestamps.map(t => t - t0);
-      }
-      return {
-        path: path.length ? path : [[bus.Lon, bus.Lat]],
-        timestamps: timestamps.length ? timestamps : [0],
-        color: [255, 0, 0, 200],
-        vehicle: bus
-      };
-    });
+buses.forEach(bus => {
+  if (!bus.VehicleNumber) return;
+  if (!busHistory[bus.VehicleNumber]) {
+    // Pierwszy fetch: tylko jeden punkt, timestamp = teraz
+    busHistory[bus.VehicleNumber] = [{lon: bus.Lon, lat: bus.Lat, time: now}];
+    return;
+  }
+  const hist = busHistory[bus.VehicleNumber];
+  const last = hist.length ? hist[hist.length-1] : null;
+  // Jeśli nowy punkt różni się od ostatniego, zapamiętaj go jako pendingHead
+  if (!last || last.lon !== bus.Lon || last.lat !== bus.Lat) {
+    pendingHead[bus.VehicleNumber] = {lon: bus.Lon, lat: bus.Lat, time: bus.Timestamp};
+    pendingHeadTime[bus.VehicleNumber] = now;
+  }
+  // Jeśli minął ANIMATION_INTERVAL od pojawienia się pendingHead, dodaj go do historii
+  if (pendingHead[bus.VehicleNumber] && (now - pendingHeadTime[bus.VehicleNumber] >= ANIMATION_INTERVAL)) {
+    hist.push(pendingHead[bus.VehicleNumber]);
+    if (hist.length > HISTORY_LENGTH) hist.shift();
+    delete pendingHead[bus.VehicleNumber];
+    delete pendingHeadTime[bus.VehicleNumber];
+  }
+});
+
+// Zwróć tablicę tripów (każdy autobus jako "trasa" z historią + interpolowana głowa)
+const trips = buses.map(bus => {
+  const hist = busHistory[bus.VehicleNumber] || [];
+  let path = hist.map(e => [e.lon, e.lat]);
+  let timestamps = hist.map(e => Math.floor(e.time / 1000));
+  if (timestamps.length > 0) {
+    const t0 = timestamps[0];
+    timestamps = timestamps.map(t => t - t0);
+  }
+  // Jeśli jest pendingHead, interpoluj głowę ogona
+  if (pendingHead[bus.VehicleNumber] && path.length > 0) {
+    const last = path[path.length - 1];
+    const target = [pendingHead[bus.VehicleNumber].lon, pendingHead[bus.VehicleNumber].lat];
+    const tInterp = Math.min(1, (now - pendingHeadTime[bus.VehicleNumber]) / ANIMATION_INTERVAL);
+    const interp = [
+      last[0] + (target[0] - last[0]) * tInterp,
+      last[1] + (target[1] - last[1]) * tInterp
+    ];
+    path = [...path.slice(0, -1), interp];
+    // timestamps: wydłuż o 1, żeby TripsLayer nie ucinał ogona
+    if (timestamps.length > 0) {
+      const lastTs = timestamps[timestamps.length - 1];
+      timestamps = [...timestamps.slice(0, -1), lastTs + tInterp * (Math.max(1, ANIMATION_INTERVAL / 1000))];
+    }
+  }
+  return {
+    path: path.length ? path : [[bus.Lon, bus.Lat]],
+    timestamps: timestamps.length ? timestamps : [0],
+    color: [255, 0, 0, 200],
+    vehicle: bus
+  };
+});
     return trips;
   } catch (e) {
     console.error('Błąd pobierania danych autobusów:', e);
