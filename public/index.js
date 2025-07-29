@@ -139,41 +139,60 @@ async function init() {
   let lastFetchTime = Date.now();
   let nextFetchTime = lastFetchTime + 10000;
   const FETCH_INTERVAL = 10000;
+  const ANIMATION_INTERVAL = Math.round(FETCH_INTERVAL * 1.2); // animacja trwa dłużej niż fetch
 
   async function updateTrips() {
     const tripsData = await fetchBusData();
     const now = Date.now();
-    lastFetchTime = now;
-    nextFetchTime = now + FETCH_INTERVAL;
-
-    // Zapamiętaj stare i nowe pozycje głowy ogona dla każdego pojazdu
-    prevHeadPositions = {};
-    nextHeadPositions = {};
+    // Sprawdź, czy pozycje się zmieniły
+    let changed = false;
     for (const trip of tripsData) {
       const vehicleId = trip.vehicle && trip.vehicle.VehicleNumber;
       if (!vehicleId) continue;
-      // Stara pozycja głowy (z poprzedniego fetchu)
       const prevTrip = lastTripsData.find(t => t.vehicle && t.vehicle.VehicleNumber === vehicleId);
-      if (prevTrip && prevTrip.path && prevTrip.path.length > 0) {
-        prevHeadPositions[vehicleId] = {
-          lon: prevTrip.path[prevTrip.path.length - 1][0],
-          lat: prevTrip.path[prevTrip.path.length - 1][1]
-        };
-      } else if (trip.path && trip.path.length > 0) {
-        prevHeadPositions[vehicleId] = {
-          lon: trip.path[trip.path.length - 1][0],
-          lat: trip.path[trip.path.length - 1][1]
-        };
-      }
-      // Nowa pozycja głowy (z obecnego fetchu)
-      if (trip.path && trip.path.length > 0) {
-        nextHeadPositions[vehicleId] = {
-          lon: trip.path[trip.path.length - 1][0],
-          lat: trip.path[trip.path.length - 1][1]
-        };
+      const prevHead = prevTrip && prevTrip.path && prevTrip.path.length > 0 ? prevTrip.path[prevTrip.path.length - 1] : null;
+      const nextHead = trip.path && trip.path.length > 0 ? trip.path[trip.path.length - 1] : null;
+      if (!prevHead || !nextHead || prevHead[0] !== nextHead[0] || prevHead[1] !== nextHead[1]) {
+        changed = true;
+        break;
       }
     }
-    lastTripsData = tripsData;
+    if (changed) {
+      lastFetchTime = now;
+      nextFetchTime = now + ANIMATION_INTERVAL;
+      // Zapamiętaj stare i nowe pozycje głowy ogona dla każdego pojazdu
+      prevHeadPositions = {};
+      nextHeadPositions = {};
+      for (const trip of tripsData) {
+        const vehicleId = trip.vehicle && trip.vehicle.VehicleNumber;
+        if (!vehicleId) continue;
+        // Stara pozycja głowy (z poprzedniego fetchu)
+        const prevTrip = lastTripsData.find(t => t.vehicle && t.vehicle.VehicleNumber === vehicleId);
+        if (prevTrip && prevTrip.path && prevTrip.path.length > 0) {
+          prevHeadPositions[vehicleId] = {
+            lon: prevTrip.path[prevTrip.path.length - 1][0],
+            lat: prevTrip.path[prevTrip.path.length - 1][1]
+          };
+        } else if (trip.path && trip.path.length > 0) {
+          prevHeadPositions[vehicleId] = {
+            lon: trip.path[trip.path.length - 1][0],
+            lat: trip.path[trip.path.length - 1][1]
+          };
+        }
+        // Nowa pozycja głowy (z obecnego fetchu)
+        if (trip.path && trip.path.length > 0) {
+          nextHeadPositions[vehicleId] = {
+            lon: trip.path[trip.path.length - 1][0],
+            lat: trip.path[trip.path.length - 1][1]
+          };
+        }
+      }
+      lastTripsData = tripsData;
+    } else {
+      // Jeśli nie zmieniło się, nie resetuj interpolacji ani czasu
+      // Ale zaktualizuj historię, żeby ogon nie znikał
+      lastTripsData = tripsData;
+    }
   }
 
   function lerp(a, b, t) {
@@ -183,6 +202,7 @@ async function init() {
 
   function animate() {
     const now = Date.now();
+    // Opóźnij animację, by dojeżdżała do punktu po fetchu, a nie przed
     const t = Math.min(1, (now - lastFetchTime) / (nextFetchTime - lastFetchTime));
     // Interpoluj pozycje głowy ogona dla każdego pojazdu
     const animatedTrips = lastTripsData.map(trip => {
