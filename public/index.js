@@ -123,9 +123,11 @@ async function init() {
   });
   map.addControl(overlay);
 
-  // Po zoomie odśwież oba layery, aby były zsynchronizowane i rozmiar punktów był aktualny
+  // Po zoomie odśwież warstwy, aby rozmiar punktów był aktualny, ale nie pobieraj nowych danych
   map.on('zoom', () => {
-    updateTrips();
+    // Odśwież warstwy z aktualnymi danymi i rozmiarem punktów
+    // Wystarczy wywołać animate() raz, bo on i tak ustawia overlay.setProps
+    animate();
   });
 
   // --- ANIMACJA I AKTUALIZACJA ---
