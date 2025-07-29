@@ -13,6 +13,8 @@ const GTFS_PROTO_URL = 'https://raw.githubusercontent.com/google/transit/master/
 // VehicleNumber -> [{lon, lat, time}]
 const busHistory = {};
 const HISTORY_LENGTH = 100; // ile pozycji historii trzymać (wydłużony ogon)
+const FETCH_INTERVAL = 10000;
+const ANIMATION_INTERVAL = FETCH_INTERVAL * 2; // animacja trwa dwa razy dłużej niż fetch
 
 // Flaga do przełączania mocków
 const USE_MOCK = false;
@@ -162,9 +164,7 @@ async function init() {
   let prevHeadPositions = {}; // VehicleNumber -> {lon, lat}
   let nextHeadPositions = {}; // VehicleNumber -> {lon, lat}
   let lastFetchTime = Date.now();
-  let nextFetchTime = lastFetchTime + 10000;
-  const FETCH_INTERVAL = 10000;
-  const ANIMATION_INTERVAL = FETCH_INTERVAL * 2; // animacja trwa dwa razy dłużej niż fetch
+  let nextFetchTime = lastFetchTime + FETCH_INTERVAL;
 
   async function updateTrips() {
     const tripsData = await fetchBusData();
