@@ -89,6 +89,7 @@ async function fetchBusData() {
       }
     });
     if (!globalStart) globalStart = Date.now();
+    const MIN_SEGMENT_DURATION = 5; // seconds
     buses.forEach(bus => {
       const hist = busHistory[bus.VehicleNumber] || [];
       if (hist.length < 2) return;
@@ -98,7 +99,8 @@ async function fetchBusData() {
         const path = [ [prev.lon, prev.lat], [curr.lon, curr.lat] ];
         // timestamps: [start, end] in seconds, relative to globalStart
         const t0 = Math.floor((prev.time - globalStart) / 1000);
-        const t1 = Math.floor((curr.time - globalStart) / 1000);
+        let t1 = Math.floor((curr.time - globalStart) / 1000);
+        if (t1 - t0 < MIN_SEGMENT_DURATION) t1 = t0 + MIN_SEGMENT_DURATION;
         trips.push({
           path,
           timestamps: [t0, t1],
