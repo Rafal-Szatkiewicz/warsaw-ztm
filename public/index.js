@@ -186,39 +186,9 @@ async function init() {
   function animate() {
     // Global animation time: seconds since globalStart
     const nowSec = Math.floor((Date.now() - (lastGlobalStart || Date.now())) / 1000);
-    // Dla każdego autobusu: statyczne segmenty + animowany ostatni
-    const busSegments = {};
-    for (const trip of lastTripsData) {
-      const vehicleId = trip.vehicle && trip.vehicle.VehicleNumber;
-      if (!vehicleId) continue;
-      if (!busSegments[vehicleId]) busSegments[vehicleId] = [];
-      busSegments[vehicleId].push(trip);
-    }
-    const animatedTrips = [];
-    for (const segments of Object.values(busSegments)) {
-      // Sortuj po czasie
-      segments.sort((a, b) => a.timestamps[0] - b.timestamps[0]);
-      let foundCurrent = false;
-      for (let i = 0; i < segments.length; i++) {
-        const trip = segments[i];
-        const start = trip.timestamps[0];
-        const end = trip.timestamps[trip.timestamps.length - 1];
-        if (nowSec < start) {
-          continue;
-        } else if (nowSec >= end) {
-          // Statyczny segment
-          animatedTrips.push({ ...trip, _currentTime: end - start });
-        } else if (!foundCurrent) {
-          // Animowany segment: currentTime nie przekracza (end-start)
-          let segTime = nowSec - start;
-          if (segTime < 0) segTime = 0;
-          if (segTime > (end - start)) segTime = end - start;
-          animatedTrips.push({ ...trip, _currentTime: segTime });
-          foundCurrent = true;
-        }
-        // Tylko jeden animowany segment na autobus
-      }
-    }
+    // TripsLayer expects a global currentTime, not per-trip
+    const animatedTrips = lastTripsData;
+    const globalCurrentTime = nowSec;
     const tripsLayer = new TripsLayer({
       id: 'trips',
       data: animatedTrips,
@@ -230,7 +200,7 @@ async function init() {
       capRounded: true,
       jointRounded: true,
       trailLength: d => (d.timestamps[d.timestamps.length-1] - d.timestamps[0]) || 1,
-      currentTime: d => d._currentTime,
+      currentTime: globalCurrentTime,
       fadeTrail: false
     });
     // Scatter layer: show animated head of each bus
