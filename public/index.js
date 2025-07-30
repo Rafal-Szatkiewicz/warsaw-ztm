@@ -89,22 +89,35 @@ async function fetchBusData() {
       }
     });
     if (!globalStart) globalStart = Date.now();
-    // For each bus, build a single trip with the full path and timestamps
+    // Każdy segment (przejście z punktu do punktu) to osobny trip
+    const MIN_SEGMENT_DURATION = 5; // sekundy
     buses.forEach(bus => {
       const hist = busHistory[bus.VehicleNumber] || [];
       if (hist.length < 2) return;
-      const path = [];
-      const timestamps = [];
-      for (let i = 0; i < hist.length; i++) {
-        path.push([hist[i].lon, hist[i].lat]);
-        timestamps.push(Math.floor((hist[i].time - globalStart) / 1000));
+      for (let i = 1; i < hist.length; i++) {
+        const prev = hist[i - 1];
+        const curr = hist[i];
+        const t0 = Math.floor((prev.time - globalStart) / 1000);
+        let t1 = Math.floor((curr.time - globalStart) / 1000);
+        if (t1 - t0 < MIN_SEGMENT_DURATION) t1 = t0 + MIN_SEGMENT_DURATION;
+        // Interpolacja dla płynności
+        const INTERP_POINTS = 10;
+        const path = [];
+        const timestamps = [];
+        for (let j = 0; j < INTERP_POINTS; j++) {
+          const frac = j / (INTERP_POINTS - 1);
+          const lon = prev.lon + (curr.lon - prev.lon) * frac;
+          const lat = prev.lat + (curr.lat - prev.lat) * frac;
+          path.push([lon, lat]);
+          timestamps.push(t0 + frac * (t1 - t0));
+        }
+        trips.push({
+          path,
+          timestamps,
+          color: [255, 0, 0, 200],
+          vehicle: bus
+        });
       }
-      trips.push({
-        path,
-        timestamps,
-        color: [255, 0, 0, 200],
-        vehicle: bus
-      });
     });
     return { trips, globalStart };
   } catch (e) {
@@ -172,15 +185,36 @@ async function init() {
   function animate() {
     // Global animation time: seconds since globalStart
     const nowSec = Math.floor((Date.now() - (lastGlobalStart || Date.now())) / 1000);
-    // Animate the whole trail for each bus as a single trip
-    const animatedTrips = lastTripsData.map(trip => {
-      const start = trip.timestamps[0];
-      const end = trip.timestamps[trip.timestamps.length - 1];
-      let _currentTime = nowSec - start;
-      if (_currentTime < 0) _currentTime = 0;
-      if (_currentTime > (end - start)) _currentTime = end - start;
-      return { ...trip, _currentTime };
-    });
+    // Dla każdego autobusu: statyczne segmenty + animowany ostatni
+    const busSegments = {};
+    for (const trip of lastTripsData) {
+      const vehicleId = trip.vehicle && trip.vehicle.VehicleNumber;
+      if (!vehicleId) continue;
+      if (!busSegments[vehicleId]) busSegments[vehicleId] = [];
+      busSegments[vehicleId].push(trip);
+    }
+    const animatedTrips = [];
+    for (const segments of Object.values(busSegments)) {
+      // Sortuj po czasie
+      segments.sort((a, b) => a.timestamps[0] - b.timestamps[0]);
+      let foundCurrent = false;
+      for (let i = 0; i < segments.length; i++) {
+        const trip = segments[i];
+        const start = trip.timestamps[0];
+        const end = trip.timestamps[trip.timestamps.length - 1];
+        if (nowSec < start) {
+          continue;
+        } else if (nowSec >= end) {
+          // Statyczny segment
+          animatedTrips.push({ ...trip, _currentTime: end - start });
+        } else if (!foundCurrent) {
+          // Animowany segment
+          animatedTrips.push({ ...trip, _currentTime: nowSec - start });
+          foundCurrent = true;
+        }
+        // Tylko jeden animowany segment na autobus
+      }
+    }
     const tripsLayer = new TripsLayer({
       id: 'trips',
       data: animatedTrips,
@@ -197,23 +231,38 @@ async function init() {
     });
     // Scatter layer: show animated head of each bus
     const busHeads = {};
-    for (const trip of animatedTrips) {
-      const { path, timestamps, vehicle, _currentTime } = trip;
+    for (const segments of Object.values(busSegments)) {
+      segments.sort((a, b) => a.timestamps[0] - b.timestamps[0]);
       let headPos = null;
-      // Find the two points in timestamps that bracket _currentTime
-      let idx = timestamps.findIndex(t => t > _currentTime + timestamps[0]);
-      if (idx === -1 || idx === 0) {
-        headPos = path[path.length - 1];
-      } else {
-        const t0 = timestamps[idx - 1];
-        const t1 = timestamps[idx];
-        const p0 = path[idx - 1];
-        const p1 = path[idx];
-        const frac = (_currentTime + timestamps[0] - t0) / (t1 - t0);
-        headPos = [
-          p0[0] + (p1[0] - p0[0]) * frac,
-          p0[1] + (p1[1] - p0[1]) * frac
-        ];
+      let vehicle = null;
+      for (let i = 0; i < segments.length; i++) {
+        const trip = segments[i];
+        const start = trip.timestamps[0];
+        const end = trip.timestamps[trip.timestamps.length - 1];
+        vehicle = trip.vehicle;
+        if (nowSec < start) {
+          continue;
+        } else if (nowSec >= end) {
+          headPos = trip.path[trip.path.length - 1];
+        } else {
+          // Animowany segment
+          const segTime = nowSec - start;
+          let idx = trip.timestamps.findIndex(t => t > segTime + start);
+          if (idx === -1 || idx === 0) {
+            headPos = trip.path[trip.path.length - 1];
+          } else {
+            const t0 = trip.timestamps[idx - 1];
+            const t1 = trip.timestamps[idx];
+            const p0 = trip.path[idx - 1];
+            const p1 = trip.path[idx];
+            const frac = (segTime + start - t0) / (t1 - t0);
+            headPos = [
+              p0[0] + (p1[0] - p0[0]) * frac,
+              p0[1] + (p1[1] - p0[1]) * frac
+            ];
+          }
+          break;
+        }
       }
       if (headPos && vehicle) {
         busHeads[vehicle.VehicleNumber] = { pos: headPos, vehicle };
