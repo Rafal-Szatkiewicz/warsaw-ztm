@@ -229,13 +229,48 @@ async function init() {
       currentTime: d => d._currentTime,
       fadeTrail: false
     });
-    // Scatter layer: show head of each bus
+    // Scatter layer: show animated head of each bus
     const busHeads = {};
-    for (const trip of lastTripsData) {
-      const vehicleId = trip.vehicle && trip.vehicle.VehicleNumber;
-      if (!vehicleId) continue;
-      if (!busHeads[vehicleId] || trip.timestamps[1] > busHeads[vehicleId].t) {
-        busHeads[vehicleId] = { pos: trip.path[1], t: trip.timestamps[1], vehicle: trip.vehicle };
+    for (const segments of Object.values(busSegments)) {
+      // Find the current or last segment for this bus
+      segments.sort((a, b) => a.timestamps[0] - b.timestamps[0]);
+      let headPos = null;
+      let vehicle = null;
+      for (let i = 0; i < segments.length; i++) {
+        const trip = segments[i];
+        const start = trip.timestamps[0];
+        const end = trip.timestamps[trip.timestamps.length - 1];
+        vehicle = trip.vehicle;
+        if (nowSec < start) {
+          // Not started yet
+          continue;
+        } else if (nowSec >= end) {
+          // Finished segment: use last point
+          headPos = trip.path[trip.path.length - 1];
+        } else {
+          // Currently animating segment: interpolate head position
+          // Find where we are in the segment
+          const segTime = nowSec - start;
+          // Find the two points in timestamps that bracket segTime
+          let idx = trip.timestamps.findIndex(t => t > segTime + start);
+          if (idx === -1 || idx === 0) {
+            headPos = trip.path[trip.path.length - 1];
+          } else {
+            const t0 = trip.timestamps[idx - 1];
+            const t1 = trip.timestamps[idx];
+            const p0 = trip.path[idx - 1];
+            const p1 = trip.path[idx];
+            const frac = (segTime + start - t0) / (t1 - t0);
+            headPos = [
+              p0[0] + (p1[0] - p0[0]) * frac,
+              p0[1] + (p1[1] - p0[1]) * frac
+            ];
+          }
+          break; // Only one animating segment per bus
+        }
+      }
+      if (headPos && vehicle) {
+        busHeads[vehicle.VehicleNumber] = { pos: headPos, vehicle };
       }
     }
     const scatterData = Object.values(busHeads).map(({ pos, vehicle }) => ({ pos, vehicle }));
