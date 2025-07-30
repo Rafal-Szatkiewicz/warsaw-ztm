@@ -204,6 +204,14 @@ async function init() {
       fadeTrail: false
     });
     // Scatter layer: show animated head of each bus
+    // Odtwórz busSegments tylko na potrzeby scatterLayer
+    const busSegments = {};
+    for (const trip of lastTripsData) {
+      const vehicleId = trip.vehicle && trip.vehicle.VehicleNumber;
+      if (!vehicleId) continue;
+      if (!busSegments[vehicleId]) busSegments[vehicleId] = [];
+      busSegments[vehicleId].push(trip);
+    }
     const busHeads = {};
     for (const segments of Object.values(busSegments)) {
       segments.sort((a, b) => a.timestamps[0] - b.timestamps[0]);
