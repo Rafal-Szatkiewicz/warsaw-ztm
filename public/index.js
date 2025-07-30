@@ -90,20 +90,29 @@ async function fetchBusData() {
     });
     if (!globalStart) globalStart = Date.now();
     const MIN_SEGMENT_DURATION = 5; // seconds
+    const INTERP_POINTS = 10; // number of points per segment
     buses.forEach(bus => {
       const hist = busHistory[bus.VehicleNumber] || [];
       if (hist.length < 2) return;
       for (let i = 1; i < hist.length; i++) {
         const prev = hist[i - 1];
         const curr = hist[i];
-        const path = [ [prev.lon, prev.lat], [curr.lon, curr.lat] ];
-        // timestamps: [start, end] in seconds, relative to globalStart
         const t0 = Math.floor((prev.time - globalStart) / 1000);
         let t1 = Math.floor((curr.time - globalStart) / 1000);
         if (t1 - t0 < MIN_SEGMENT_DURATION) t1 = t0 + MIN_SEGMENT_DURATION;
+        // Interpolate points
+        const path = [];
+        const timestamps = [];
+        for (let j = 0; j < INTERP_POINTS; j++) {
+          const frac = j / (INTERP_POINTS - 1);
+          const lon = prev.lon + (curr.lon - prev.lon) * frac;
+          const lat = prev.lat + (curr.lat - prev.lat) * frac;
+          path.push([lon, lat]);
+          timestamps.push(t0 + frac * (t1 - t0));
+        }
         trips.push({
           path,
-          timestamps: [t0, t1],
+          timestamps,
           color: [255, 0, 0, 200],
           vehicle: bus
         });
@@ -190,7 +199,8 @@ async function init() {
       let foundCurrent = false;
       for (let i = 0; i < segments.length; i++) {
         const trip = segments[i];
-        const [start, end] = trip.timestamps;
+        const start = trip.timestamps[0];
+        const end = trip.timestamps[trip.timestamps.length - 1];
         if (nowSec < start) {
           // Not started yet
           continue;
@@ -215,7 +225,7 @@ async function init() {
       widthMinPixels: 10,
       capRounded: true,
       jointRounded: true,
-      trailLength: d => (d.timestamps[1] - d.timestamps[0]) || 1,
+      trailLength: d => (d.timestamps[d.timestamps.length-1] - d.timestamps[0]) || 1,
       currentTime: d => d._currentTime,
       fadeTrail: false
     });
