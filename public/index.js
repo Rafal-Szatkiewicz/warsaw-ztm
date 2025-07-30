@@ -241,10 +241,30 @@ async function init() {
       },
       fadeTrail: false
     });
+    // Prepare bus heads for scatter layer: use the end of the animating segment if present, else the last finished segment
+    const busHeads = {};
+    // Use animating segments first
+    for (const seg of animatingSegments) {
+      const vehicleId = seg.vehicle && seg.vehicle.VehicleNumber;
+      if (vehicleId) {
+        busHeads[vehicleId] = seg.path[seg.path.length - 1];
+      }
+    }
+    // If no animating segment, use last finished segment
+    for (const seg of finishedSegments) {
+      const vehicleId = seg.vehicle && seg.vehicle.VehicleNumber;
+      if (vehicleId && !busHeads[vehicleId]) {
+        busHeads[vehicleId] = seg.path[seg.path.length - 1];
+      }
+    }
+    const scatterData = Object.entries(busHeads).map(([vehicleId, pos]) => ({
+      vehicle: { VehicleNumber: vehicleId },
+      pos
+    }));
     const scatterLayer = new ScatterplotLayer({
       id: 'bus-points',
-      data: animatedTrips,
-      getPosition: d => d.path[d.path.length - 1],
+      data: scatterData,
+      getPosition: d => d.pos,
       getFillColor: [0, 128, 255, 200],
       getRadius: () => {
         if (map && typeof map.getZoom === 'function') {
