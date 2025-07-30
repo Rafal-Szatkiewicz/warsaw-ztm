@@ -77,10 +77,18 @@ async function fetchBusData() {
       }
     });
 
-    // Zwróć segmenty: finishedSegments (statyczne) i animatingSegments (bieżący)
-    const finishedSegments = [];
-    const animatingSegments = [];
-    const nowSec = Math.floor(Date.now() / 1000);
+    // Zwróć tablicę segmentów (każdy odcinek historii jako osobny trip)
+    const trips = [];
+    // Find the earliest timestamp for global zero
+    let globalStart = null;
+    buses.forEach(bus => {
+      const hist = busHistory[bus.VehicleNumber] || [];
+      for (let i = 1; i < hist.length; i++) {
+        const prev = hist[i - 1];
+        if (globalStart === null || prev.time < globalStart) globalStart = prev.time;
+      }
+    });
+    if (!globalStart) globalStart = Date.now();
     buses.forEach(bus => {
       const hist = busHistory[bus.VehicleNumber] || [];
       if (hist.length < 2) return;
@@ -88,24 +96,18 @@ async function fetchBusData() {
         const prev = hist[i - 1];
         const curr = hist[i];
         const path = [ [prev.lon, prev.lat], [curr.lon, curr.lat] ];
-        const t0 = Math.floor(prev.time / 1000);
-        const t1 = Math.floor(curr.time / 1000);
-        const segment = {
+        // timestamps: [start, end] in seconds, relative to globalStart
+        const t0 = Math.floor((prev.time - globalStart) / 1000);
+        const t1 = Math.floor((curr.time - globalStart) / 1000);
+        trips.push({
           path,
-          timestamps: [0, t1 - t0],
+          timestamps: [t0, t1],
           color: [255, 0, 0, 200],
-          vehicle: bus,
-          segmentStartTime: t0,
-          segmentEndTime: t1
-        };
-        if (i < hist.length - 1) {
-          finishedSegments.push(segment);
-        } else {
-          animatingSegments.push(segment);
-        }
+          vehicle: bus
+        });
       }
     });
-    return { finishedSegments, animatingSegments, buses };
+    return { trips, globalStart };
   } catch (e) {
     console.error('Błąd pobierania danych autobusów:', e);
     return [];
@@ -157,8 +159,10 @@ async function init() {
   const ANIMATION_INTERVAL = Math.round(FETCH_INTERVAL * 1.2); // animacja trwa dłużej niż fetch
 
   async function updateTrips() {
-    const { finishedSegments, animatingSegments, buses } = await fetchBusData();
-    lastTripsData = { finishedSegments, animatingSegments, buses };
+    const { trips: tripsData, globalStart } = await fetchBusData();
+    lastTripsData = tripsData;
+    lastGlobalStart = globalStart;
+let lastGlobalStart = null;
   }
 
   function lerp(a, b, t) {
@@ -167,23 +171,11 @@ async function init() {
 
 
   function animate() {
-    const { finishedSegments, animatingSegments, buses } = lastTripsData;
-    // PathLayer for finished segments (static trail)
-    const staticLayer = new PathLayer({
-      id: 'static-trail',
-      data: finishedSegments,
-      getPath: d => d.path,
-      getColor: d => d.color,
-      widthMinPixels: 10,
-      opacity: 0.85,
-      jointRounded: true,
-      capRounded: true
-    });
-
-    // TripsLayer for currently animating segment(s)
+    // Global animation time: seconds since globalStart
+    const nowSec = Math.floor((Date.now() - (lastGlobalStart || Date.now())) / 1000);
     const tripsLayer = new TripsLayer({
       id: 'trips',
-      data: animatingSegments,
+      data: lastTripsData,
       getPath: d => d.path,
       getTimestamps: d => d.timestamps,
       getColor: d => d.color,
@@ -192,31 +184,19 @@ async function init() {
       capRounded: true,
       jointRounded: true,
       trailLength: 2,
-      currentTime: d => {
-        const now = Math.floor(Date.now() / 1000);
-        return Math.max(0, Math.min(d.timestamps[1], now - d.segmentStartTime));
-      },
+      currentTime: nowSec,
       fadeTrail: false
     });
-
-    // ScatterplotLayer for bus heads
+    // Scatter layer: show head of each bus
     const busHeads = {};
-    for (const seg of animatingSegments) {
-      const vehicleId = seg.vehicle && seg.vehicle.VehicleNumber;
-      if (vehicleId) {
-        busHeads[vehicleId] = seg.path[seg.path.length - 1];
+    for (const trip of lastTripsData) {
+      const vehicleId = trip.vehicle && trip.vehicle.VehicleNumber;
+      if (!vehicleId) continue;
+      if (!busHeads[vehicleId] || trip.timestamps[1] > busHeads[vehicleId].t) {
+        busHeads[vehicleId] = { pos: trip.path[1], t: trip.timestamps[1], vehicle: trip.vehicle };
       }
     }
-    for (const seg of finishedSegments) {
-      const vehicleId = seg.vehicle && seg.vehicle.VehicleNumber;
-      if (vehicleId && !busHeads[vehicleId]) {
-        busHeads[vehicleId] = seg.path[seg.path.length - 1];
-      }
-    }
-    const scatterData = Object.entries(busHeads).map(([vehicleId, pos]) => ({
-      vehicle: { VehicleNumber: vehicleId },
-      pos
-    }));
+    const scatterData = Object.values(busHeads).map(({ pos, vehicle }) => ({ pos, vehicle }));
     const scatterLayer = new ScatterplotLayer({
       id: 'bus-points',
       data: scatterData,
@@ -244,7 +224,7 @@ async function init() {
       }
     });
     overlay.setProps({
-      layers: [staticLayer, tripsLayer, scatterLayer]
+      layers: [tripsLayer, scatterLayer]
     });
     animationFrame = requestAnimationFrame(animate);
   }
