@@ -39,7 +39,7 @@ async function fetchBusData() {
     const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
     const message = FeedMessage.decode(new Uint8Array(buffer));
     // Loguj zdekodowany FeedMessage jako JSON
-    console.log("Fetched new data");
+    console.log('FeedMessage JSON:', JSON.stringify(FeedMessage.toObject(message), null, 2));
     // Wyciągnij pojazdy z pozycją
     const entities = message.entity || [];
     const now = Date.now();
@@ -199,47 +199,32 @@ async function init() {
     const now = Date.now();
     // Opóźnij animację, by dojeżdżała do punktu po fetchu, a nie przed
     const t = Math.min(1, (now - lastFetchTime) / (nextFetchTime - lastFetchTime));
-    // Interpoluj pozycje głowy ogona dla każdego pojazdu
-    const animatedTrips = lastTripsData.map(trip => {
-      const vehicleId = trip.vehicle && trip.vehicle.VehicleNumber;
-      if (!vehicleId) return trip;
-      const prevHead = prevHeadPositions[vehicleId];
-      const nextHead = nextHeadPositions[vehicleId];
-      let animatedPath = trip.path.slice();
-      if (prevHead && nextHead && animatedPath.length > 1) {
-        // Interpoluj głowę ogona
-        const lastIdx = animatedPath.length - 1;
-        const interpLon = lerp(prevHead.lon, nextHead.lon, t);
-        const interpLat = lerp(prevHead.lat, nextHead.lat, t);
-        animatedPath[lastIdx] = [interpLon, interpLat];
-      }
-      return {
-        ...trip,
-        path: animatedPath
-      };
-    });
-
-    // Ustal globalny zakres animacji: od najstarszego do najnowszego segmentStartTime
-    let minSegmentStart = Infinity;
-    let maxSegmentEnd = -Infinity;
-    for (const trip of animatedTrips) {
-      if (typeof trip.segmentStartTime === 'number' && trip.timestamps && trip.timestamps.length === 2) {
-        const segStart = trip.segmentStartTime;
-        const segEnd = trip.segmentStartTime + trip.timestamps[1];
-        if (segStart < minSegmentStart) minSegmentStart = segStart;
-        if (segEnd > maxSegmentEnd) maxSegmentEnd = segEnd;
-      }
-    }
-    if (!isFinite(minSegmentStart) || !isFinite(maxSegmentEnd)) {
-      minSegmentStart = 0;
-      maxSegmentEnd = 10;
-    }
-    // currentTime animowany globalnie, trail jest kumulatywny
+    // Synchronizuj animację z czasem systemowym
     const nowSec = Math.floor(Date.now() / 1000);
-    const animatedCurrentTime = nowSec - minSegmentStart;
+    // Dla każdego pojazdu wybierz tylko segment, który jest aktualnie animowany
+    const activeTrips = {};
+    let latestPositions = {};
+    for (const trip of lastTripsData) {
+      const vehicleId = trip.vehicle && trip.vehicle.VehicleNumber;
+      if (!vehicleId) continue;
+      const segStart = trip.segmentStartTime;
+      const segEnd = trip.segmentStartTime + trip.timestamps[1];
+      if (nowSec >= segStart && nowSec <= segEnd) {
+        // Ten segment jest aktywny
+        activeTrips[vehicleId] = trip;
+      }
+      // Zawsze zapamiętaj najnowszy punkt dla scatterLayer
+      if (!latestPositions[vehicleId] || segEnd > latestPositions[vehicleId].segEnd) {
+        latestPositions[vehicleId] = {
+          pos: trip.path[1],
+          segEnd
+        };
+      }
+    }
+    // Warstwa trips: tylko aktywne segmenty
     const tripsLayer = new TripsLayer({
       id: 'trips',
-      data: animatedTrips,
+      data: Object.values(activeTrips),
       getPath: d => d.path,
       getTimestamps: d => d.timestamps,
       getColor: d => d.color,
@@ -247,14 +232,18 @@ async function init() {
       widthMinPixels: 10,
       capRounded: true,
       jointRounded: true,
-      trailLength: 1e6, // bardzo długi, by trail był kumulatywny
-      currentTime: animatedCurrentTime,
+      trailLength: 2,
+      currentTime: nowSec - (Object.values(activeTrips)[0]?.segmentStartTime || 0),
       fadeTrail: false
     });
+    // Warstwa scatter: głowa autobusu na końcu najnowszego segmentu
     const scatterLayer = new ScatterplotLayer({
       id: 'bus-points',
-      data: animatedTrips,
-      getPosition: d => d.path[d.path.length - 1],
+      data: Object.entries(latestPositions).map(([vehicleId, obj]) => ({
+        vehicle: { VehicleNumber: vehicleId },
+        position: obj.pos
+      })),
+      getPosition: d => d.position,
       getFillColor: [0, 128, 255, 200],
       getRadius: () => {
         if (map && typeof map.getZoom === 'function') {
