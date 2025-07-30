@@ -39,7 +39,7 @@ async function fetchBusData() {
     const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
     const message = FeedMessage.decode(new Uint8Array(buffer));
     // Loguj zdekodowany FeedMessage jako JSON
-    console.log('FeedMessage JSON:', JSON.stringify(FeedMessage.toObject(message), null, 2));
+    console.log("Fetched new data");
     // Wyciągnij pojazdy z pozycją
     const entities = message.entity || [];
     const now = Date.now();
@@ -81,29 +81,21 @@ async function fetchBusData() {
     const trips = [];
     buses.forEach(bus => {
       const hist = busHistory[bus.VehicleNumber] || [];
-      if (hist.length < 2) return;
+      if (hist.length < 2) return; // potrzebujemy co najmniej dwóch punktów na segment
       for (let i = 1; i < hist.length; i++) {
         const prev = hist[i - 1];
         const curr = hist[i];
-        const next = hist[i + 1];
-        // path: [start, end, end] (zatrzymaj się na końcu)
-        const path = [ [prev.lon, prev.lat], [curr.lon, curr.lat], [curr.lon, curr.lat] ];
-        // timestamps: [0, t1-t0, tNext-t0] (zatrzymaj się na końcu do czasu kolejnego segmentu)
+        // path: [start, end]
+        const path = [ [prev.lon, prev.lat], [curr.lon, curr.lat] ];
+        // timestamps: [start, end] w sekundach, przesunięte do zera dla tego segmentu
         const t0 = Math.floor(prev.time / 1000);
         const t1 = Math.floor(curr.time / 1000);
-        let tNext;
-        if (next) {
-          tNext = Math.floor(next.time / 1000);
-        } else {
-          // Jeśli nie ma kolejnego punktu, zatrzymaj na końcu na długo
-          tNext = t1 + 60; // 60 sekund "czekania" na końcu
-        }
         trips.push({
           path,
-          timestamps: [0, t1 - t0, tNext - t0],
+          timestamps: [0, t1 - t0],
           color: [255, 0, 0, 200],
           vehicle: bus,
-          segmentStartTime: t0
+          segmentStartTime: t0 // do synchronizacji animacji
         });
       }
     });
@@ -227,25 +219,24 @@ async function init() {
       };
     });
 
-    // Ustal trailLength na długość historii
-    const maxTrail = HISTORY_LENGTH;
-    // Ustal globalny zakres animacji: od najstarszego do najnowszego timestampu w historii
-    let minCurrentTime = Infinity;
-    let maxCurrentTime = -Infinity;
+    // Ustal globalny zakres animacji: od najstarszego do najnowszego segmentStartTime
+    let minSegmentStart = Infinity;
+    let maxSegmentEnd = -Infinity;
     for (const trip of animatedTrips) {
-      if (trip.timestamps && trip.timestamps.length > 0) {
-        const first = trip.timestamps[0];
-        const last = trip.timestamps[trip.timestamps.length - 1];
-        if (first < minCurrentTime) minCurrentTime = first;
-        if (last > maxCurrentTime) maxCurrentTime = last;
+      if (typeof trip.segmentStartTime === 'number' && trip.timestamps && trip.timestamps.length === 2) {
+        const segStart = trip.segmentStartTime;
+        const segEnd = trip.segmentStartTime + trip.timestamps[1];
+        if (segStart < minSegmentStart) minSegmentStart = segStart;
+        if (segEnd > maxSegmentEnd) maxSegmentEnd = segEnd;
       }
     }
-    if (!isFinite(minCurrentTime) || !isFinite(maxCurrentTime)) {
-      minCurrentTime = 0;
-      maxCurrentTime = 10;
+    if (!isFinite(minSegmentStart) || !isFinite(maxSegmentEnd)) {
+      minSegmentStart = 0;
+      maxSegmentEnd = 10;
     }
-    // currentTime animowany od początku do końca historii, płynnie
-    const animatedCurrentTime = minCurrentTime + t * (maxCurrentTime - minCurrentTime);
+    // currentTime animowany globalnie, trail jest kumulatywny
+    const nowSec = Math.floor(Date.now() / 1000);
+    const animatedCurrentTime = nowSec - minSegmentStart;
     const tripsLayer = new TripsLayer({
       id: 'trips',
       data: animatedTrips,
@@ -256,7 +247,7 @@ async function init() {
       widthMinPixels: 10,
       capRounded: true,
       jointRounded: true,
-      trailLength: maxTrail,
+      trailLength: 1e6, // bardzo długi, by trail był kumulatywny
       currentTime: animatedCurrentTime,
       fadeTrail: false
     });
