@@ -206,6 +206,9 @@ async function init() {
       if (!vehicleId) continue;
       if (!busSegments[vehicleId]) busSegments[vehicleId] = [];
       busSegments[vehicleId].push(trip);
+
+      console.log('trip.timestamps', trip.timestamps);
+      console.log('currentTime', nowSec);
     }
     const busHeads = {};
     for (const segments of Object.values(busSegments)) {
@@ -276,8 +279,7 @@ async function init() {
       layers: [tripsLayer, scatterLayer]
     });
     animationFrame = requestAnimationFrame(animate);
-    console.log('trip.timestamps', trip.timestamps);
-    console.log('currentTime', nowSec);
+
   }
 
   await updateTrips();
