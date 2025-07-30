@@ -14,7 +14,7 @@ const GTFS_PROTO_URL = 'https://raw.githubusercontent.com/google/transit/master/
 const busHistory = {};
 const HISTORY_LENGTH = 100; // ile pozycji historii trzymać (wydłużony ogon)
 
-const globalStart = null
+let globalStart = null
 let lastAnimationTimestamp = 0;
 
 import * as protobuf from 'protobufjs';
