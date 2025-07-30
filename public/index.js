@@ -80,15 +80,15 @@ async function fetchBusData() {
     // Zwróć tablicę segmentów (każdy odcinek historii jako osobny trip)
     const trips = [];
     // Find the earliest timestamp for global zero
-    let globalStart = null;
-    buses.forEach(bus => {
-      const hist = busHistory[bus.VehicleNumber] || [];
-      for (let i = 1; i < hist.length; i++) {
-        const prev = hist[i - 1];
-        if (globalStart === null || prev.time < globalStart) globalStart = prev.time;
-      }
-    });
-    if (!globalStart) globalStart = Date.now();
+    let globalStart = Date.now();
+    // buses.forEach(bus => {
+    //   const hist = busHistory[bus.VehicleNumber] || [];
+    //   for (let i = 1; i < hist.length; i++) {
+    //     const prev = hist[i - 1];
+    //     if (globalStart === null || prev.time < globalStart) globalStart = prev.time;
+    //   }
+    // });
+    // if (!globalStart) globalStart = Date.now();
     // Każdy segment (przejście z punktu do punktu) to osobny trip
     const MIN_SEGMENT_DURATION = 8; // sekundy (wymuszona długość animacji)
     buses.forEach(bus => {
