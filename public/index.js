@@ -151,6 +151,7 @@ async function init() {
 
   let animationFrame;
   let lastTripsData = [];
+  let lastGlobalStart = null;
   let prevHeadPositions = {}; // VehicleNumber -> {lon, lat}
   let nextHeadPositions = {}; // VehicleNumber -> {lon, lat}
   let lastFetchTime = Date.now();
@@ -162,7 +163,6 @@ async function init() {
     const { trips: tripsData, globalStart } = await fetchBusData();
     lastTripsData = tripsData;
     lastGlobalStart = globalStart;
-let lastGlobalStart = null;
   }
 
   function lerp(a, b, t) {
