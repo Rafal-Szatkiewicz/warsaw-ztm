@@ -213,7 +213,7 @@ async function init() {
       widthMinPixels: 10,
       capRounded: true,
       jointRounded: true,
-      trailLength: 2,
+      trailLength: d => (d.timestamps[1] - d.timestamps[0]) || 1,
       currentTime: d => d._currentTime,
       fadeTrail: false
     });
