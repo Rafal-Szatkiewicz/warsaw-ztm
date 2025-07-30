@@ -2,7 +2,7 @@ import {MapboxOverlay} from '@deck.gl/mapbox';
 import {Map} from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {TripsLayer} from '@deck.gl/geo-layers';
-import {ScatterplotLayer, PathLayer} from '@deck.gl/layers';
+import {ScatterplotLayer} from '@deck.gl/layers';
 
 // --- KONFIGURACJA DANYCH ---
 // Pobieraj dane GTFS-RT z https://mkuran.pl/gtfs/warsaw/vehicles.pb (brak API key)
@@ -81,11 +81,13 @@ async function fetchBusData() {
     const trips = [];
     buses.forEach(bus => {
       const hist = busHistory[bus.VehicleNumber] || [];
-      if (hist.length < 2) return;
+      if (hist.length < 2) return; // potrzebujemy co najmniej dwóch punktów na segment
       for (let i = 1; i < hist.length; i++) {
         const prev = hist[i - 1];
         const curr = hist[i];
+        // path: [start, end]
         const path = [ [prev.lon, prev.lat], [curr.lon, curr.lat] ];
+        // timestamps: [start, end] w sekundach, przesunięte do zera dla tego segmentu
         const t0 = Math.floor(prev.time / 1000);
         const t1 = Math.floor(curr.time / 1000);
         trips.push({
@@ -93,8 +95,7 @@ async function fetchBusData() {
           timestamps: [0, t1 - t0],
           color: [255, 0, 0, 200],
           vehicle: bus,
-          segmentStartTime: t0,
-          segmentEndTime: t1
+          segmentStartTime: t0 // do synchronizacji animacji
         });
       }
     });
@@ -195,19 +196,23 @@ async function init() {
 
 
   function animate() {
-    const now = Date.now();
-    // Opóźnij animację, by dojeżdżała do punktu po fetchu, a nie przed
-    const t = Math.min(1, (now - lastFetchTime) / (nextFetchTime - lastFetchTime));
-    // Rozdziel segmenty na statyczne (skończone) i animowany (bieżący)
+    // --- NEW ANIMATION LOGIC: static trail + animating segment + head ---
     const nowSec = Math.floor(Date.now() / 1000);
+    // Split segments into finished (static) and animating (current) for each bus
     const finishedSegments = [];
     const animatingSegments = [];
-    for (const trip of lastTripsData) {
-      if (typeof trip.segmentStartTime === 'number' && typeof trip.segmentEndTime === 'number') {
-        if (nowSec >= trip.segmentEndTime) {
-          finishedSegments.push(trip);
-        } else if (nowSec >= trip.segmentStartTime && nowSec < trip.segmentEndTime) {
-          animatingSegments.push(trip);
+    const latestSegmentByBus = {};
+    for (const seg of lastTripsData) {
+      const vehicleId = seg.vehicle && seg.vehicle.VehicleNumber;
+      if (!vehicleId) continue;
+      if (typeof seg.segmentStartTime === 'number' && typeof seg.timestamps?.[1] === 'number') {
+        const segEnd = seg.segmentStartTime + seg.timestamps[1];
+        if (nowSec >= segEnd) {
+          finishedSegments.push(seg);
+          latestSegmentByBus[vehicleId] = seg;
+        } else if (nowSec >= seg.segmentStartTime && nowSec < segEnd) {
+          animatingSegments.push(seg);
+          latestSegmentByBus[vehicleId] = seg;
         }
       }
     }
@@ -220,7 +225,8 @@ async function init() {
       getColor: d => d.color,
       widthMinPixels: 10,
       opacity: 0.85,
-      rounded: true
+      jointRounded: true,
+      capRounded: true
     });
 
     // TripsLayer for currently animating segment(s)
@@ -241,26 +247,28 @@ async function init() {
       },
       fadeTrail: false
     });
-    // Prepare bus heads for scatter layer: use the end of the animating segment if present, else the last finished segment
+
+    // Scatter layer: show head at end of animating segment, or last static segment
     const busHeads = {};
-    // Use animating segments first
     for (const seg of animatingSegments) {
       const vehicleId = seg.vehicle && seg.vehicle.VehicleNumber;
       if (vehicleId) {
-        busHeads[vehicleId] = seg.path[seg.path.length - 1];
+        // Interpolate head position for current segment
+        const now = Math.floor(Date.now() / 1000);
+        const t = Math.max(0, Math.min(1, (now - seg.segmentStartTime) / (seg.timestamps[1] || 1)));
+        const [start, end] = seg.path;
+        const lon = start[0] + (end[0] - start[0]) * t;
+        const lat = start[1] + (end[1] - start[1]) * t;
+        busHeads[vehicleId] = { vehicle: seg.vehicle, pos: [lon, lat] };
       }
     }
-    // If no animating segment, use last finished segment
     for (const seg of finishedSegments) {
       const vehicleId = seg.vehicle && seg.vehicle.VehicleNumber;
       if (vehicleId && !busHeads[vehicleId]) {
-        busHeads[vehicleId] = seg.path[seg.path.length - 1];
+        busHeads[vehicleId] = { vehicle: seg.vehicle, pos: seg.path[1] };
       }
     }
-    const scatterData = Object.entries(busHeads).map(([vehicleId, pos]) => ({
-      vehicle: { VehicleNumber: vehicleId },
-      pos
-    }));
+    const scatterData = Object.values(busHeads);
     const scatterLayer = new ScatterplotLayer({
       id: 'bus-points',
       data: scatterData,
