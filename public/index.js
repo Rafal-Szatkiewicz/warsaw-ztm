@@ -199,32 +199,48 @@ async function init() {
     const now = Date.now();
     // Opóźnij animację, by dojeżdżała do punktu po fetchu, a nie przed
     const t = Math.min(1, (now - lastFetchTime) / (nextFetchTime - lastFetchTime));
-    // Synchronizuj animację z czasem systemowym
-    const nowSec = Math.floor(Date.now() / 1000);
-    // Dla każdego pojazdu wybierz tylko segment, który jest aktualnie animowany
-    const activeTrips = {};
-    let latestPositions = {};
-    for (const trip of lastTripsData) {
+    // Interpoluj pozycje głowy ogona dla każdego pojazdu
+    const animatedTrips = lastTripsData.map(trip => {
       const vehicleId = trip.vehicle && trip.vehicle.VehicleNumber;
-      if (!vehicleId) continue;
-      const segStart = trip.segmentStartTime;
-      const segEnd = trip.segmentStartTime + trip.timestamps[1];
-      if (nowSec >= segStart && nowSec <= segEnd) {
-        // Ten segment jest aktywny
-        activeTrips[vehicleId] = trip;
+      if (!vehicleId) return trip;
+      const prevHead = prevHeadPositions[vehicleId];
+      const nextHead = nextHeadPositions[vehicleId];
+      let animatedPath = trip.path.slice();
+      if (prevHead && nextHead && animatedPath.length > 1) {
+        // Interpoluj głowę ogona
+        const lastIdx = animatedPath.length - 1;
+        const interpLon = lerp(prevHead.lon, nextHead.lon, t);
+        const interpLat = lerp(prevHead.lat, nextHead.lat, t);
+        animatedPath[lastIdx] = [interpLon, interpLat];
       }
-      // Zawsze zapamiętaj najnowszy punkt dla scatterLayer
-      if (!latestPositions[vehicleId] || segEnd > latestPositions[vehicleId].segEnd) {
-        latestPositions[vehicleId] = {
-          pos: trip.path[1],
-          segEnd
-        };
+      return {
+        ...trip,
+        path: animatedPath
+      };
+    });
+
+    // Ustal trailLength na długość historii
+    const maxTrail = HISTORY_LENGTH;
+    // Ustal globalny zakres animacji: od najstarszego do najnowszego timestampu w historii
+    let minCurrentTime = Infinity;
+    let maxCurrentTime = -Infinity;
+    for (const trip of animatedTrips) {
+      if (trip.timestamps && trip.timestamps.length > 0) {
+        const first = trip.timestamps[0];
+        const last = trip.timestamps[trip.timestamps.length - 1];
+        if (first < minCurrentTime) minCurrentTime = first;
+        if (last > maxCurrentTime) maxCurrentTime = last;
       }
     }
-    // Warstwa trips: tylko aktywne segmenty
+    if (!isFinite(minCurrentTime) || !isFinite(maxCurrentTime)) {
+      minCurrentTime = 0;
+      maxCurrentTime = 10;
+    }
+    // currentTime animowany od początku do końca historii, płynnie
+    const animatedCurrentTime = minCurrentTime + t * (maxCurrentTime - minCurrentTime);
     const tripsLayer = new TripsLayer({
       id: 'trips',
-      data: Object.values(activeTrips),
+      data: animatedTrips,
       getPath: d => d.path,
       getTimestamps: d => d.timestamps,
       getColor: d => d.color,
@@ -232,18 +248,14 @@ async function init() {
       widthMinPixels: 10,
       capRounded: true,
       jointRounded: true,
-      trailLength: 2,
-      currentTime: nowSec - (Object.values(activeTrips)[0]?.segmentStartTime || 0),
+      trailLength: maxTrail,
+      currentTime: animatedCurrentTime,
       fadeTrail: false
     });
-    // Warstwa scatter: głowa autobusu na końcu najnowszego segmentu
     const scatterLayer = new ScatterplotLayer({
       id: 'bus-points',
-      data: Object.entries(latestPositions).map(([vehicleId, obj]) => ({
-        vehicle: { VehicleNumber: vehicleId },
-        position: obj.pos
-      })),
-      getPosition: d => d.position,
+      data: animatedTrips,
+      getPosition: d => d.path[d.path.length - 1],
       getFillColor: [0, 128, 255, 200],
       getRadius: () => {
         if (map && typeof map.getZoom === 'function') {
