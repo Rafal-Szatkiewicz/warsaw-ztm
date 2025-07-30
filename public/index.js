@@ -86,9 +86,18 @@ async function fetchBusData() {
       for (let i = 1; i < hist.length; i++) {
         const prev = hist[i - 1];
         const curr = hist[i];
-        const path = [ [prev.lon, prev.lat], [curr.lon, curr.lat] ];
         const t0 = Math.floor(prev.time / 1000);
         const t1 = Math.floor(curr.time / 1000);
+        // Only allow valid, strictly increasing, non-NaN segments
+        if (
+          isNaN(t0) || isNaN(t1) ||
+          t1 <= t0 ||
+          prev.lon == null || prev.lat == null || curr.lon == null || curr.lat == null
+        ) {
+          console.warn('Skipping invalid segment', {bus: bus.VehicleNumber, t0, t1, prev, curr});
+          continue;
+        }
+        const path = [ [prev.lon, prev.lat], [curr.lon, curr.lat] ];
         trips.push({
           path,
           timestamps: [0, t1 - t0],
