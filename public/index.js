@@ -102,7 +102,7 @@ async function fetchBusData() {
     return {trips, buses};
   } catch (e) {
     console.error('Błąd pobierania danych autobusów:', e);
-    return {trips: [], buses: []};
+    return [];
   }
 }
 
@@ -243,24 +243,10 @@ async function init() {
       },
       fadeTrail: false
     });
-    // ScatterplotLayer: show bus head at the end of the last segment for each bus
-    const busHeads = [];
-    const seen = new Set();
-    // Use animatingSegments first, fallback to finishedSegments
-    for (const seg of [...animatingSegments, ...finishedSegments]) {
-      const vehicleId = seg.vehicle && seg.vehicle.VehicleNumber;
-      if (vehicleId && !seen.has(vehicleId)) {
-        busHeads.push({
-          ...seg,
-          position: seg.path[seg.path.length - 1]
-        });
-        seen.add(vehicleId);
-      }
-    }
     const scatterLayer = new ScatterplotLayer({
       id: 'bus-points',
-      data: busHeads,
-      getPosition: d => d.position,
+      data: animatedTrips,
+      getPosition: d => d.path[d.path.length - 1],
       getFillColor: [0, 128, 255, 200],
       getRadius: () => {
         if (map && typeof map.getZoom === 'function') {
