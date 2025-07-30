@@ -90,7 +90,7 @@ async function fetchBusData() {
     });
     if (!globalStart) globalStart = Date.now();
     // Każdy segment (przejście z punktu do punktu) to osobny trip
-    const MIN_SEGMENT_DURATION = 5; // sekundy
+    const MIN_SEGMENT_DURATION = 8; // sekundy (wymuszona długość animacji)
     buses.forEach(bus => {
       const hist = busHistory[bus.VehicleNumber] || [];
       if (hist.length < 2) return;
@@ -99,7 +99,8 @@ async function fetchBusData() {
         const curr = hist[i];
         const t0 = Math.floor((prev.time - globalStart) / 1000);
         let t1 = Math.floor((curr.time - globalStart) / 1000);
-        if (t1 - t0 < MIN_SEGMENT_DURATION) t1 = t0 + MIN_SEGMENT_DURATION;
+        // Wymuś, by każdy segment trwał MIN_SEGMENT_DURATION
+        t1 = t0 + MIN_SEGMENT_DURATION;
         // Interpolacja dla płynności
         const INTERP_POINTS = 10;
         const path = [];
@@ -208,8 +209,11 @@ async function init() {
           // Statyczny segment
           animatedTrips.push({ ...trip, _currentTime: end - start });
         } else if (!foundCurrent) {
-          // Animowany segment
-          animatedTrips.push({ ...trip, _currentTime: nowSec - start });
+          // Animowany segment: currentTime nie przekracza (end-start)
+          let segTime = nowSec - start;
+          if (segTime < 0) segTime = 0;
+          if (segTime > (end - start)) segTime = end - start;
+          animatedTrips.push({ ...trip, _currentTime: segTime });
           foundCurrent = true;
         }
         // Tylko jeden animowany segment na autobus
