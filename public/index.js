@@ -281,6 +281,8 @@ async function init() {
       layers: [tripsLayer, scatterLayer]
     });
     animationFrame = requestAnimationFrame(animate);
+    console.log('currentTime:', globalCurrentTime);
+  console.log('sample timestamps:', animatedTrips[0]?.timestamps);
   }
 
   await updateTrips();
