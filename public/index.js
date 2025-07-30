@@ -14,8 +14,8 @@ const GTFS_PROTO_URL = 'https://raw.githubusercontent.com/google/transit/master/
 const busHistory = {};
 const HISTORY_LENGTH = 100; // ile pozycji historii trzymać (wydłużony ogon)
 
-let globalStart = null
-let lastAnimationTimestamp = 0;
+// Flaga do przełączania mocków
+const USE_MOCK = false;
 
 import * as protobuf from 'protobufjs';
 
@@ -84,17 +84,21 @@ async function fetchBusData() {
 // Zamiast opierać się na "historycznym czasie", animujemy tylko nowy segment
   const MIN_SEGMENT_DURATION = 8; // sekundy
   const INTERP_POINTS = 10;
-buses.forEach(bus => {
-  const hist = busHistory[bus.VehicleNumber] || [];
-  if (hist.length < 2) return;
+  buses.forEach(bus => {
+    const hist = busHistory[bus.VehicleNumber] || [];
+    if (hist.length < 2) return;
+    for (let i = 1; i < hist.length; i++) {
+      const prev = hist[i - 1];
+      const curr = hist[i];
 
-  for (let i = 1; i < hist.length; i++) {
-    const prev = hist[i - 1];
-    const curr = hist[i];
+    const t0 = (prev.time - globalStart) / 1000;
+    let t1 = (curr.time - globalStart) / 1000;
 
-    const t0 = lastAnimationTimestamp;
-    const t1 = t0 + MIN_SEGMENT_DURATION;
-    lastAnimationTimestamp = t1;
+    // wymuś minimalną długość
+    if (t1 - t0 < MIN_SEGMENT_DURATION) {
+      t1 = t0 + MIN_SEGMENT_DURATION;
+    }
+
 
     const path = [];
     const timestamps = [];
@@ -123,8 +127,7 @@ buses.forEach(bus => {
 }
 
 async function init() {
-  globalStart = Date.now();
-  lastAnimationTimestamp = 0;
+  const globalStart = Date.now();
   const map = new Map({
     style: 'https://tiles.openfreemap.org/styles/liberty',
     center: [21.0122, 52.2297],
@@ -206,9 +209,6 @@ async function init() {
       if (!vehicleId) continue;
       if (!busSegments[vehicleId]) busSegments[vehicleId] = [];
       busSegments[vehicleId].push(trip);
-
-      console.log('trip.timestamps', trip.timestamps);
-      console.log('currentTime', nowSec);
     }
     const busHeads = {};
     for (const segments of Object.values(busSegments)) {
@@ -279,7 +279,8 @@ async function init() {
       layers: [tripsLayer, scatterLayer]
     });
     animationFrame = requestAnimationFrame(animate);
-
+  //   console.log('currentTime:', globalCurrentTime);
+  // console.log('sample timestamps:', animatedTrips[0]?.timestamps);
   }
 
   await updateTrips();
