@@ -173,11 +173,22 @@ async function init() {
   function animate() {
     // Global animation time: seconds since globalStart
     const nowSec = Math.floor((Date.now() - (lastGlobalStart || Date.now())) / 1000);
-    // Only show segments whose animation window has started
-    const visibleTrips = lastTripsData.filter(trip => trip.timestamps[0] <= nowSec);
+    // Animate each segment independently: set currentTime per segment
+    const animatedTrips = lastTripsData.map(trip => {
+      const [start, end] = trip.timestamps;
+      let segCurrentTime;
+      if (nowSec < start) {
+        segCurrentTime = 0;
+      } else if (nowSec >= end) {
+        segCurrentTime = end - start;
+      } else {
+        segCurrentTime = nowSec - start;
+      }
+      return { ...trip, _currentTime: segCurrentTime };
+    });
     const tripsLayer = new TripsLayer({
       id: 'trips',
-      data: visibleTrips,
+      data: animatedTrips,
       getPath: d => d.path,
       getTimestamps: d => d.timestamps,
       getColor: d => d.color,
@@ -186,7 +197,7 @@ async function init() {
       capRounded: true,
       jointRounded: true,
       trailLength: 2,
-      currentTime: nowSec,
+      currentTime: d => d._currentTime,
       fadeTrail: false
     });
     // Scatter layer: show head of each bus
