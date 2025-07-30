@@ -81,27 +81,24 @@ async function fetchBusData() {
     const trips = [];
     // Find the earliest timestamp for global zero
     let globalStart = Date.now();
-    // buses.forEach(bus => {
-    //   const hist = busHistory[bus.VehicleNumber] || [];
-    //   for (let i = 1; i < hist.length; i++) {
-    //     const prev = hist[i - 1];
-    //     if (globalStart === null || prev.time < globalStart) globalStart = prev.time;
-    //   }
-    // });
-    // if (!globalStart) globalStart = Date.now();
-    // Każdy segment (przejście z punktu do punktu) to osobny trip
 // Zamiast opierać się na "historycznym czasie", animujemy tylko nowy segment
-const MIN_SEGMENT_DURATION = 8; // sekundy
-const INTERP_POINTS = 10;
-buses.forEach(bus => {
-  const hist = busHistory[bus.VehicleNumber] || [];
-  if (hist.length < 2) return;
-  for (let i = 1; i < hist.length; i++) {
-    const prev = hist[i - 1];
-    const curr = hist[i];
+  const MIN_SEGMENT_DURATION = 8; // sekundy
+  const INTERP_POINTS = 10;
+  buses.forEach(bus => {
+    const hist = busHistory[bus.VehicleNumber] || [];
+    if (hist.length < 2) return;
+    for (let i = 1; i < hist.length; i++) {
+      const prev = hist[i - 1];
+      const curr = hist[i];
 
-    const t0 = 0;
-    const t1 = MIN_SEGMENT_DURATION;
+    const t0 = (prev.time - globalStart) / 1000;
+    let t1 = (curr.time - globalStart) / 1000;
+
+    // wymuś minimalną długość
+    if (t1 - t0 < MIN_SEGMENT_DURATION) {
+      t1 = t0 + MIN_SEGMENT_DURATION;
+    }
+
 
     const path = [];
     const timestamps = [];
@@ -130,6 +127,7 @@ buses.forEach(bus => {
 }
 
 async function init() {
+  const globalStart = Date.now();
   const map = new Map({
     style: 'https://tiles.openfreemap.org/styles/liberty',
     center: [21.0122, 52.2297],
@@ -166,7 +164,6 @@ async function init() {
 
   let animationFrame;
   let lastTripsData = [];
-  let lastGlobalStart = null;
   let prevHeadPositions = {}; // VehicleNumber -> {lon, lat}
   let nextHeadPositions = {}; // VehicleNumber -> {lon, lat}
   let lastFetchTime = Date.now();
@@ -176,8 +173,7 @@ async function init() {
 
   async function updateTrips() {
     const { trips: tripsData, globalStart } = await fetchBusData();
-    lastTripsData = tripsData;
-    lastGlobalStart = globalStart;
+    lastTripsData = [...lastTripsData, ...tripsData];
   }
 
   function lerp(a, b, t) {
@@ -187,7 +183,7 @@ async function init() {
 
   function animate() {
     // Global animation time: seconds since globalStart
-    const nowSec = (Date.now() - (lastGlobalStart || Date.now())) / 1000;
+    const nowSec = (Date.now() - (globalStart || Date.now())) / 1000;
     // TripsLayer expects a global currentTime, not per-trip
     const animatedTrips = lastTripsData;
     const globalCurrentTime = nowSec;
