@@ -196,43 +196,51 @@ async function init() {
 
 
   function animate() {
-    // --- NEW ANIMATION LOGIC: static trail + animating segment + head ---
-    const nowSec = Math.floor(Date.now() / 1000);
-    // Split segments into finished (static) and animating (current) for each bus
-    const finishedSegments = [];
-    const animatingSegments = [];
-    const latestSegmentByBus = {};
-    for (const seg of lastTripsData) {
-      const vehicleId = seg.vehicle && seg.vehicle.VehicleNumber;
-      if (!vehicleId) continue;
-      if (typeof seg.segmentStartTime === 'number' && typeof seg.timestamps?.[1] === 'number') {
-        const segEnd = seg.segmentStartTime + seg.timestamps[1];
-        if (nowSec >= segEnd) {
-          finishedSegments.push(seg);
-          latestSegmentByBus[vehicleId] = seg;
-        } else if (nowSec >= seg.segmentStartTime && nowSec < segEnd) {
-          animatingSegments.push(seg);
-          latestSegmentByBus[vehicleId] = seg;
-        }
+    const now = Date.now();
+    // Opóźnij animację, by dojeżdżała do punktu po fetchu, a nie przed
+    const t = Math.min(1, (now - lastFetchTime) / (nextFetchTime - lastFetchTime));
+    // Interpoluj pozycje głowy ogona dla każdego pojazdu
+    const animatedTrips = lastTripsData.map(trip => {
+      const vehicleId = trip.vehicle && trip.vehicle.VehicleNumber;
+      if (!vehicleId) return trip;
+      const prevHead = prevHeadPositions[vehicleId];
+      const nextHead = nextHeadPositions[vehicleId];
+      let animatedPath = trip.path.slice();
+      if (prevHead && nextHead && animatedPath.length > 1) {
+        // Interpoluj głowę ogona
+        const lastIdx = animatedPath.length - 1;
+        const interpLon = lerp(prevHead.lon, nextHead.lon, t);
+        const interpLat = lerp(prevHead.lat, nextHead.lat, t);
+        animatedPath[lastIdx] = [interpLon, interpLat];
       }
-    }
-
-    // PathLayer for finished segments (static trail)
-    const staticLayer = new PathLayer({
-      id: 'static-trail',
-      data: finishedSegments,
-      getPath: d => d.path,
-      getColor: d => d.color,
-      widthMinPixels: 10,
-      opacity: 0.85,
-      jointRounded: true,
-      capRounded: true
+      return {
+        ...trip,
+        path: animatedPath
+      };
     });
 
-    // TripsLayer for currently animating segment(s)
+    // Ustal trailLength na długość historii
+    const maxTrail = HISTORY_LENGTH;
+    // Ustal globalny zakres animacji: od najstarszego do najnowszego timestampu w historii
+    let minCurrentTime = Infinity;
+    let maxCurrentTime = -Infinity;
+    for (const trip of animatedTrips) {
+      if (trip.timestamps && trip.timestamps.length > 0) {
+        const first = trip.timestamps[0];
+        const last = trip.timestamps[trip.timestamps.length - 1];
+        if (first < minCurrentTime) minCurrentTime = first;
+        if (last > maxCurrentTime) maxCurrentTime = last;
+      }
+    }
+    if (!isFinite(minCurrentTime) || !isFinite(maxCurrentTime)) {
+      minCurrentTime = 0;
+      maxCurrentTime = 10;
+    }
+    // currentTime animowany od początku do końca historii, płynnie
+    const animatedCurrentTime = minCurrentTime + t * (maxCurrentTime - minCurrentTime);
     const tripsLayer = new TripsLayer({
       id: 'trips',
-      data: animatingSegments,
+      data: animatedTrips,
       getPath: d => d.path,
       getTimestamps: d => d.timestamps,
       getColor: d => d.color,
@@ -240,39 +248,14 @@ async function init() {
       widthMinPixels: 10,
       capRounded: true,
       jointRounded: true,
-      trailLength: 2,
-      currentTime: d => {
-        const now = Math.floor(Date.now() / 1000);
-        return Math.max(0, Math.min(d.timestamps[1], now - d.segmentStartTime));
-      },
+      trailLength: maxTrail,
+      currentTime: animatedCurrentTime,
       fadeTrail: false
     });
-
-    // Scatter layer: show head at end of animating segment, or last static segment
-    const busHeads = {};
-    for (const seg of animatingSegments) {
-      const vehicleId = seg.vehicle && seg.vehicle.VehicleNumber;
-      if (vehicleId) {
-        // Interpolate head position for current segment
-        const now = Math.floor(Date.now() / 1000);
-        const t = Math.max(0, Math.min(1, (now - seg.segmentStartTime) / (seg.timestamps[1] || 1)));
-        const [start, end] = seg.path;
-        const lon = start[0] + (end[0] - start[0]) * t;
-        const lat = start[1] + (end[1] - start[1]) * t;
-        busHeads[vehicleId] = { vehicle: seg.vehicle, pos: [lon, lat] };
-      }
-    }
-    for (const seg of finishedSegments) {
-      const vehicleId = seg.vehicle && seg.vehicle.VehicleNumber;
-      if (vehicleId && !busHeads[vehicleId]) {
-        busHeads[vehicleId] = { vehicle: seg.vehicle, pos: seg.path[1] };
-      }
-    }
-    const scatterData = Object.values(busHeads);
     const scatterLayer = new ScatterplotLayer({
       id: 'bus-points',
-      data: scatterData,
-      getPosition: d => d.pos,
+      data: animatedTrips,
+      getPosition: d => d.path[d.path.length - 1],
       getFillColor: [0, 128, 255, 200],
       getRadius: () => {
         if (map && typeof map.getZoom === 'function') {
@@ -296,7 +279,7 @@ async function init() {
       }
     });
     overlay.setProps({
-      layers: [staticLayer, tripsLayer, scatterLayer]
+      layers: [tripsLayer, scatterLayer]
     });
     animationFrame = requestAnimationFrame(animate);
   }
