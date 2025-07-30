@@ -173,19 +173,36 @@ async function init() {
   function animate() {
     // Global animation time: seconds since globalStart
     const nowSec = Math.floor((Date.now() - (lastGlobalStart || Date.now())) / 1000);
-    // Animate each segment independently: set currentTime per segment
-    const animatedTrips = lastTripsData.map(trip => {
-      const [start, end] = trip.timestamps;
-      let segCurrentTime;
-      if (nowSec < start) {
-        segCurrentTime = 0;
-      } else if (nowSec >= end) {
-        segCurrentTime = end - start;
-      } else {
-        segCurrentTime = nowSec - start;
+    // For each bus, only show finished segments (static) and the currently animating segment (animated)
+    const busSegments = {};
+    for (const trip of lastTripsData) {
+      const vehicleId = trip.vehicle && trip.vehicle.VehicleNumber;
+      if (!vehicleId) continue;
+      if (!busSegments[vehicleId]) busSegments[vehicleId] = [];
+      busSegments[vehicleId].push(trip);
+    }
+    const animatedTrips = [];
+    for (const segments of Object.values(busSegments)) {
+      // Sort by segment start time
+      segments.sort((a, b) => a.timestamps[0] - b.timestamps[0]);
+      let foundCurrent = false;
+      for (let i = 0; i < segments.length; i++) {
+        const trip = segments[i];
+        const [start, end] = trip.timestamps;
+        if (nowSec < start) {
+          // Not started yet
+          continue;
+        } else if (nowSec >= end) {
+          // Finished segment: show as static
+          animatedTrips.push({ ...trip, _currentTime: end - start });
+        } else if (!foundCurrent) {
+          // Currently animating segment
+          animatedTrips.push({ ...trip, _currentTime: nowSec - start });
+          foundCurrent = true;
+        }
+        // Only one animating segment per bus
       }
-      return { ...trip, _currentTime: segCurrentTime };
-    });
+    }
     const tripsLayer = new TripsLayer({
       id: 'trips',
       data: animatedTrips,
