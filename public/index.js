@@ -39,7 +39,7 @@ async function fetchBusData() {
     const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
     const message = FeedMessage.decode(new Uint8Array(buffer));
     // Loguj zdekodowany FeedMessage jako JSON
-    console.log("Fetched new data");
+    console.log('FeedMessage JSON:', JSON.stringify(FeedMessage.toObject(message), null, 2));
     // Wyciągnij pojazdy z pozycją
     const entities = message.entity || [];
     const now = Date.now();
@@ -77,23 +77,27 @@ async function fetchBusData() {
       }
     });
 
-    // Zwróć tablicę tripów (każdy autobus jako "trasa" z historią)
-    const trips = buses.map(bus => {
+    // Zwróć tablicę segmentów (każdy odcinek historii jako osobny trip)
+    const trips = [];
+    buses.forEach(bus => {
       const hist = busHistory[bus.VehicleNumber] || [];
-      // path: [[lon, lat], ...]
-      const path = hist.map(e => [e.lon, e.lat]);
-      // timestamps: w sekundach, przesunięte do zera
-      let timestamps = hist.map(e => Math.floor(e.time / 1000));
-      if (timestamps.length > 0) {
-        const t0 = timestamps[0];
-        timestamps = timestamps.map(t => t - t0);
+      if (hist.length < 2) return; // potrzebujemy co najmniej dwóch punktów na segment
+      for (let i = 1; i < hist.length; i++) {
+        const prev = hist[i - 1];
+        const curr = hist[i];
+        // path: [start, end]
+        const path = [ [prev.lon, prev.lat], [curr.lon, curr.lat] ];
+        // timestamps: [start, end] w sekundach, przesunięte do zera dla tego segmentu
+        const t0 = Math.floor(prev.time / 1000);
+        const t1 = Math.floor(curr.time / 1000);
+        trips.push({
+          path,
+          timestamps: [0, t1 - t0],
+          color: [255, 0, 0, 200],
+          vehicle: bus,
+          segmentStartTime: t0 // do synchronizacji animacji
+        });
       }
-      return {
-        path: path.length ? path : [[bus.Lon, bus.Lat]],
-        timestamps: timestamps.length ? timestamps : [0],
-        color: [255, 0, 0, 200],
-        vehicle: bus
-      };
     });
     return trips;
   } catch (e) {
