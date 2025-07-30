@@ -81,21 +81,29 @@ async function fetchBusData() {
     const trips = [];
     buses.forEach(bus => {
       const hist = busHistory[bus.VehicleNumber] || [];
-      if (hist.length < 2) return; // potrzebujemy co najmniej dwóch punktów na segment
+      if (hist.length < 2) return;
       for (let i = 1; i < hist.length; i++) {
         const prev = hist[i - 1];
         const curr = hist[i];
-        // path: [start, end]
-        const path = [ [prev.lon, prev.lat], [curr.lon, curr.lat] ];
-        // timestamps: [start, end] w sekundach, przesunięte do zera dla tego segmentu
+        const next = hist[i + 1];
+        // path: [start, end, end] (zatrzymaj się na końcu)
+        const path = [ [prev.lon, prev.lat], [curr.lon, curr.lat], [curr.lon, curr.lat] ];
+        // timestamps: [0, t1-t0, tNext-t0] (zatrzymaj się na końcu do czasu kolejnego segmentu)
         const t0 = Math.floor(prev.time / 1000);
         const t1 = Math.floor(curr.time / 1000);
+        let tNext;
+        if (next) {
+          tNext = Math.floor(next.time / 1000);
+        } else {
+          // Jeśli nie ma kolejnego punktu, zatrzymaj na końcu na długo
+          tNext = t1 + 60; // 60 sekund "czekania" na końcu
+        }
         trips.push({
           path,
-          timestamps: [0, t1 - t0],
+          timestamps: [0, t1 - t0, tNext - t0],
           color: [255, 0, 0, 200],
           vehicle: bus,
-          segmentStartTime: t0 // do synchronizacji animacji
+          segmentStartTime: t0
         });
       }
     });
