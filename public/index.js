@@ -173,9 +173,11 @@ async function init() {
   function animate() {
     // Global animation time: seconds since globalStart
     const nowSec = Math.floor((Date.now() - (lastGlobalStart || Date.now())) / 1000);
+    // Only show segments whose animation window has started
+    const visibleTrips = lastTripsData.filter(trip => trip.timestamps[0] <= nowSec);
     const tripsLayer = new TripsLayer({
       id: 'trips',
-      data: lastTripsData,
+      data: visibleTrips,
       getPath: d => d.path,
       getTimestamps: d => d.timestamps,
       getColor: d => d.color,
