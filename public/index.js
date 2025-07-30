@@ -90,36 +90,38 @@ async function fetchBusData() {
     // });
     // if (!globalStart) globalStart = Date.now();
     // Każdy segment (przejście z punktu do punktu) to osobny trip
-    const MIN_SEGMENT_DURATION = 8; // sekundy (wymuszona długość animacji)
-    buses.forEach(bus => {
-      const hist = busHistory[bus.VehicleNumber] || [];
-      if (hist.length < 2) return;
-      for (let i = 1; i < hist.length; i++) {
-        const prev = hist[i - 1];
-        const curr = hist[i];
-        const t0 = Math.floor((prev.time - globalStart) / 1000);
-        let t1 = Math.floor((curr.time - globalStart) / 1000);
-        // Wymuś, by każdy segment trwał MIN_SEGMENT_DURATION
-        t1 = t0 + MIN_SEGMENT_DURATION;
-        // Interpolacja dla płynności
-        const INTERP_POINTS = 10;
-        const path = [];
-        const timestamps = [];
-        for (let j = 0; j < INTERP_POINTS; j++) {
-          const frac = j / (INTERP_POINTS - 1);
-          const lon = prev.lon + (curr.lon - prev.lon) * frac;
-          const lat = prev.lat + (curr.lat - prev.lat) * frac;
-          path.push([lon, lat]);
-          timestamps.push(t0 + frac * (t1 - t0));
-        }
-        trips.push({
-          path,
-          timestamps,
-          color: [255, 0, 0, 200],
-          vehicle: bus
-        });
-      }
+// Zamiast opierać się na "historycznym czasie", animujemy tylko nowy segment
+const MIN_SEGMENT_DURATION = 8; // sekundy
+const INTERP_POINTS = 10;
+buses.forEach(bus => {
+  const hist = busHistory[bus.VehicleNumber] || [];
+  if (hist.length < 2) return;
+  for (let i = 1; i < hist.length; i++) {
+    const prev = hist[i - 1];
+    const curr = hist[i];
+
+    const t0 = 0;
+    const t1 = MIN_SEGMENT_DURATION;
+
+    const path = [];
+    const timestamps = [];
+    for (let j = 0; j < INTERP_POINTS; j++) {
+      const frac = j / (INTERP_POINTS - 1);
+      const lon = prev.lon + (curr.lon - prev.lon) * frac;
+      const lat = prev.lat + (curr.lat - prev.lat) * frac;
+      path.push([lon, lat]);
+      timestamps.push(t0 + frac * (t1 - t0));
+    }
+
+    trips.push({
+      path,
+      timestamps,
+      color: [255, 0, 0, 200],
+      vehicle: bus
     });
+  }
+});
+
     return { trips, globalStart };
   } catch (e) {
     console.error('Błąd pobierania danych autobusów:', e);
@@ -281,8 +283,8 @@ async function init() {
       layers: [tripsLayer, scatterLayer]
     });
     animationFrame = requestAnimationFrame(animate);
-    console.log('currentTime:', globalCurrentTime);
-  console.log('sample timestamps:', animatedTrips[0]?.timestamps);
+  //   console.log('currentTime:', globalCurrentTime);
+  // console.log('sample timestamps:', animatedTrips[0]?.timestamps);
   }
 
   await updateTrips();
