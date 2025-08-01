@@ -191,9 +191,11 @@ async function init() {
   function animate() {
     // Global animation time: seconds since globalStart
     const nowSec = (Date.now() - (lastGlobalStart || Date.now())) / 1000;
+    const maxDuration = 8;
+
     // TripsLayer expects a global currentTime, not per-trip
     const animatedTrips = lastTripsData;
-    const globalCurrentTime = nowSec;
+    const globalCurrentTime = Math.min(nowSec, maxDuration);
     const tripsLayer = new TripsLayer({
       id: 'trips',
       data: animatedTrips,
@@ -285,7 +287,11 @@ async function init() {
     overlay.setProps({
       layers: [tripsLayer, scatterLayer]
     });
-    animationFrame = requestAnimationFrame(animate);
+
+      // 🛑 Zatrzymaj animację po 1 razie
+    if (elapsedSec < maxDuration) {
+      animationFrame = requestAnimationFrame(animate);
+    }
   //   console.log('currentTime:', globalCurrentTime);
   // console.log('sample timestamps:', animatedTrips[0]?.timestamps);
   }
