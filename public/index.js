@@ -96,22 +96,25 @@ const INTERP_POINTS = 10;
 buses.forEach(bus => {
   const hist = busHistory[bus.VehicleNumber] || [];
   if (hist.length < 2) return;
+
   for (let i = 1; i < hist.length; i++) {
     const prev = hist[i - 1];
     const curr = hist[i];
 
-    const t0 = 0;
-    const t1 = MIN_SEGMENT_DURATION;
-
     const path = [];
-    const timestamps = [];
     for (let j = 0; j < INTERP_POINTS; j++) {
       const frac = j / (INTERP_POINTS - 1);
       const lon = prev.lon + (curr.lon - prev.lon) * frac;
       const lat = prev.lat + (curr.lat - prev.lat) * frac;
       path.push([lon, lat]);
-      timestamps.push(t0 + frac * (t1 - t0));
     }
+
+    // Dla ostatniego segmentu: pełna animacja
+    // Dla wcześniejszych: timestamps "skończone", by nie animować
+    const isLast = (i === hist.length - 1);
+    const timestamps = isLast
+      ? Array.from({ length: INTERP_POINTS }, (_, j) => (j / (INTERP_POINTS - 1)) * MIN_SEGMENT_DURATION)
+      : Array(INTERP_POINTS).fill(0); // statyczny, nie animowany
 
     trips.push({
       path,
@@ -121,6 +124,7 @@ buses.forEach(bus => {
     });
   }
 });
+
 
     return { trips, globalStart };
   } catch (e) {
