@@ -210,7 +210,7 @@ async function init() {
 
     const animatedTripsLayer = new TripsLayer({
       id: 'trips-animated',
-      data: lastTripsData,
+      data: lastLatestTrips,
       getPath: d => d.path,
       getTimestamps: d => d.timestamps,
       getColor: d => d.color,
