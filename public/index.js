@@ -14,8 +14,7 @@ const GTFS_PROTO_URL = 'https://raw.githubusercontent.com/google/transit/master/
 const busHistory = {};
 const HISTORY_LENGTH = 100; // ile pozycji historii trzymać (wydłużony ogon)
 
-// Flaga do przełączania mocków
-const USE_MOCK = false;
+let lastLatestTrips = [];
 
 import * as protobuf from 'protobufjs';
 
@@ -301,7 +300,7 @@ async function init() {
     overlay.setProps({
       layers: [staticTripsLayer, animatedTripsLayer, scatterLayer]
     });
-    if (elapsedSec < MIN_SEGMENT_DURATION) {
+    if (nowSec < MIN_SEGMENT_DURATION) {
       animationFrame = requestAnimationFrame(animate);
     }
   //   console.log('currentTime:', globalCurrentTime);
