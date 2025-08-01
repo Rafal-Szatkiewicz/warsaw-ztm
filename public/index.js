@@ -128,6 +128,9 @@ buses.forEach(bus => {
 }
 
 async function init() {
+
+  let hasAnimatedOnce = false;
+
   const map = new Map({
     style: 'https://tiles.openfreemap.org/styles/liberty',
     center: [21.0122, 52.2297],
@@ -177,7 +180,10 @@ async function init() {
     lastTripsData = tripsData;
     lastLatestTrips = latestTrips;
     lastGlobalStart = globalStart;
-    animate();
+
+    if (!hasAnimatedOnce) {
+      animate();
+    }
   }
 
   function animate() {
@@ -300,6 +306,9 @@ async function init() {
     });
     if (nowSec < maxDuration) {
       animationFrame = requestAnimationFrame(animate);
+    }
+    else {
+      hasAnimatedOnce = true;
     }
   //   console.log('currentTime:', globalCurrentTime);
   // console.log('sample timestamps:', animatedTrips[0]?.timestamps);
