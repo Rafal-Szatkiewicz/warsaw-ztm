@@ -79,17 +79,10 @@ async function fetchBusData() {
 
     // Zwróć tablicę segmentów (każdy odcinek historii jako osobny trip)
     const trips = [];
+    const latestTrips = {};
     // Find the earliest timestamp for global zero
     let globalStart = Date.now();
-    // buses.forEach(bus => {
-    //   const hist = busHistory[bus.VehicleNumber] || [];
-    //   for (let i = 1; i < hist.length; i++) {
-    //     const prev = hist[i - 1];
-    //     if (globalStart === null || prev.time < globalStart) globalStart = prev.time;
-    //   }
-    // });
-    // if (!globalStart) globalStart = Date.now();
-    // Każdy segment (przejście z punktu do punktu) to osobny trip
+
 // Zamiast opierać się na "historycznym czasie", animujemy tylko nowy segment
 const MIN_SEGMENT_DURATION = 8; // sekundy
 const INTERP_POINTS = 10;
@@ -100,33 +93,35 @@ buses.forEach(bus => {
   for (let i = 1; i < hist.length; i++) {
     const prev = hist[i - 1];
     const curr = hist[i];
-
+    
     const path = [];
+    const timestamps = [];
+
     for (let j = 0; j < INTERP_POINTS; j++) {
       const frac = j / (INTERP_POINTS - 1);
       const lon = prev.lon + (curr.lon - prev.lon) * frac;
       const lat = prev.lat + (curr.lat - prev.lat) * frac;
       path.push([lon, lat]);
+      timestamps.push(frac * MIN_SEGMENT_DURATION);
     }
 
-    // Dla ostatniego segmentu: pełna animacja
-    // Dla wcześniejszych: timestamps "skończone", by nie animować
-    const isLast = (i === hist.length - 1);
-    const timestamps = isLast
-      ? Array.from({ length: INTERP_POINTS }, (_, j) => (j / (INTERP_POINTS - 1)) * MIN_SEGMENT_DURATION)
-      : Array(INTERP_POINTS).fill(0); // statyczny, nie animowany
-
-    trips.push({
+    const segment = {
       path,
       timestamps,
       color: [255, 0, 0, 200],
       vehicle: bus
-    });
+    };
+
+    trips.push(segment);
+
+    if (i === hist.length - 1) {
+      latestTrips[bus.VehicleNumber] = segment;
+    }
   }
 });
 
 
-    return { trips, globalStart };
+    return { trips, latestTrips: Object.values(latestTrips), globalStart };
   } catch (e) {
     console.error('Błąd pobierania danych autobusów:', e);
     return [];
@@ -179,9 +174,11 @@ async function init() {
   const ANIMATION_INTERVAL = Math.round(FETCH_INTERVAL * 1.2); // animacja trwa dłużej niż fetch
 
   async function updateTrips() {
-    const { trips: tripsData, globalStart } = await fetchBusData();
+    const { trips: tripsData, latestTrips, globalStart } = await fetchBusData();
     lastTripsData = tripsData;
+    lastLatestTrips = latestTrips;
     lastGlobalStart = globalStart;
+    animate();
   }
 
   function lerp(a, b, t) {
@@ -194,22 +191,39 @@ async function init() {
     const maxDuration = 8;
 
     // TripsLayer expects a global currentTime, not per-trip
-    const animatedTrips = lastTripsData;
     const globalCurrentTime = Math.min(nowSec, maxDuration);
-    const tripsLayer = new TripsLayer({
-      id: 'trips',
-      data: animatedTrips,
+    const staticTripsLayer = new TripsLayer({
+      id: 'trips-static',
+      data: lastTripsData.filter(
+        trip => !lastLatestTrips.some(latest => latest === trip)
+      ),
       getPath: d => d.path,
       getTimestamps: d => d.timestamps,
       getColor: d => d.color,
-      opacity: 0.85,
+      opacity: 1,
       widthMinPixels: 10,
       capRounded: true,
       jointRounded: true,
-      trailLength: d => (d.timestamps[d.timestamps.length-1] - d.timestamps[0]) || 1,
+      trailLength: 1000,
+      currentTime: Infinity,
+      fadeTrail: false
+    });
+
+    const animatedTripsLayer = new TripsLayer({
+      id: 'trips-animated',
+      data: lastTripsData,
+      getPath: d => d.path,
+      getTimestamps: d => d.timestamps,
+      getColor: d => d.color,
+      opacity: 1,
+      widthMinPixels: 10,
+      capRounded: true,
+      jointRounded: true,
+      trailLength: d => (d.timestamps.at(-1) - d.timestamps[0]) || 1,
       currentTime: globalCurrentTime,
       fadeTrail: false
     });
+
     // Scatter layer: show animated head of each bus
     // Odtwórz busSegments tylko na potrzeby scatterLayer
     const busSegments = {};
@@ -285,9 +299,11 @@ async function init() {
       }
     });
     overlay.setProps({
-      layers: [tripsLayer, scatterLayer]
+      layers: [staticTripsLayer, animatedTripsLayer, scatterLayer]
     });
-    animationFrame = requestAnimationFrame(animate);
+    if (elapsedSec < MIN_SEGMENT_DURATION) {
+      animationFrame = requestAnimationFrame(animate);
+    }
   //   console.log('currentTime:', globalCurrentTime);
   // console.log('sample timestamps:', animatedTrips[0]?.timestamps);
   }
