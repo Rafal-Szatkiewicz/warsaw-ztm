@@ -289,7 +289,7 @@ async function init() {
     });
 
       // 🛑 Zatrzymaj animację po 1 razie
-    if (elapsedSec < maxDuration) {
+    if (nowSec < maxDuration) {
       animationFrame = requestAnimationFrame(animate);
     }
   //   console.log('currentTime:', globalCurrentTime);
