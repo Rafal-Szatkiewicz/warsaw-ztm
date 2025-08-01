@@ -180,14 +180,12 @@ async function init() {
     animate();
   }
 
-  function lerp(a, b, t) {
-    return a + (b - a) * t;
-  }
-
   function animate() {
     // Global animation time: seconds since globalStart
     const nowSec = (Date.now() - (lastGlobalStart || Date.now())) / 1000;
-    const maxDuration = 8;
+    const maxDuration = Math.max(
+      ...lastLatestTrips.map(trip => trip.timestamps.at(-1) || 0)
+    );
 
     // TripsLayer expects a global currentTime, not per-trip
     const globalCurrentTime = Math.min(nowSec, maxDuration);
@@ -300,7 +298,7 @@ async function init() {
     overlay.setProps({
       layers: [staticTripsLayer, animatedTripsLayer, scatterLayer]
     });
-    if (nowSec < MIN_SEGMENT_DURATION) {
+    if (nowSec < maxDuration) {
       animationFrame = requestAnimationFrame(animate);
     }
   //   console.log('currentTime:', globalCurrentTime);
