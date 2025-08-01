@@ -182,22 +182,46 @@ async function init() {
     const { trips: tripsData, globalStart } = await fetchBusData();
     lastTripsData = tripsData;
     lastGlobalStart = globalStart;
+
+    // Wyznacz czas zakończenia animacji (największy timestamp)
+    stopTime = 0;
+    for (const trip of tripsData) {
+      const maxT = Math.max(...trip.timestamps);
+      if (maxT > stopTime) stopTime = maxT;
+    }
   }
+
 
   function lerp(a, b, t) {
     return a + (b - a) * t;
   }
 
+  let stopTime = null;
 
   function animate() {
-    // Global animation time: seconds since globalStart
-    const nowSec = (Date.now() - (lastGlobalStart || Date.now())) / 1000;
-    // TripsLayer expects a global currentTime, not per-trip
-    const animatedTrips = lastTripsData;
+    if (!lastGlobalStart) return;
+
+    const now = Date.now();
+    let nowSec = (now - lastGlobalStart) / 1000;
+
+    // Jeśli stopTime ustawione, nie przekraczaj go
+    if (stopTime !== null && nowSec > stopTime) {
+      nowSec = stopTime;
+    }
+
     const globalCurrentTime = nowSec;
+
+    // Zatrzymaj animację jeśli zakończona
+    if (stopTime !== null && globalCurrentTime >= stopTime) {
+      cancelAnimationFrame(animationFrame);
+      console.log('Animation finished.');
+    } else {
+      animationFrame = requestAnimationFrame(animate);
+    }
+
     const tripsLayer = new TripsLayer({
       id: 'trips',
-      data: animatedTrips,
+      data: lastTripsData,
       getPath: d => d.path,
       getTimestamps: d => d.timestamps,
       getColor: d => d.color,
@@ -205,10 +229,11 @@ async function init() {
       widthMinPixels: 10,
       capRounded: true,
       jointRounded: true,
-      trailLength: d => (d.timestamps[d.timestamps.length-1] - d.timestamps[0]) || 1,
+      trailLength: d => (d.timestamps[d.timestamps.length - 1] - d.timestamps[0]) || 1,
       currentTime: globalCurrentTime,
       fadeTrail: false
     });
+
     // Scatter layer: show animated head of each bus
     // Odtwórz busSegments tylko na potrzeby scatterLayer
     const busSegments = {};
