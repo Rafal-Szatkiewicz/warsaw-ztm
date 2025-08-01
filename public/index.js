@@ -15,6 +15,8 @@ const busHistory = {};
 const HISTORY_LENGTH = 100; // ile pozycji historii trzymać (wydłużony ogon)
 
 let lastLatestTrips = [];
+const MIN_SEGMENT_DURATION = 8; // sekundy
+const INTERP_POINTS = 10;
 
 import * as protobuf from 'protobufjs';
 
@@ -83,8 +85,6 @@ async function fetchBusData() {
     let globalStart = Date.now();
 
 // Zamiast opierać się na "historycznym czasie", animujemy tylko nowy segment
-const MIN_SEGMENT_DURATION = 8; // sekundy
-const INTERP_POINTS = 10;
 buses.forEach(bus => {
   const hist = busHistory[bus.VehicleNumber] || [];
   if (hist.length < 2) return;
