@@ -190,10 +190,10 @@ async function init() {
 
   function animate() {
     // Global animation time: seconds since globalStart
-    const nowSec = (Date.now() - (lastGlobalStart || Date.now())) / 1000;
+    const elapsedSec = (Date.now() - (lastGlobalStart || Date.now())) / 1000;
     // TripsLayer expects a global currentTime, not per-trip
     const animatedTrips = lastTripsData;
-    const globalCurrentTime = nowSec;
+    const globalCurrentTime = Math.min(elapsedSec, MIN_SEGMENT_DURATION);
     const tripsLayer = new TripsLayer({
       id: 'trips',
       data: animatedTrips,
