@@ -4,9 +4,6 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import {TripsLayer} from '@deck.gl/geo-layers';
 import {ScatterplotLayer} from '@deck.gl/layers';
 
-const MIN_SEGMENT_DURATION = 8;
-const INTERP_POINTS = 10;
-
 // --- KONFIGURACJA DANYCH ---
 // Pobieraj dane GTFS-RT z https://mkuran.pl/gtfs/warsaw/vehicles.pb (brak API key)
 const VEHICLES_PB_URL = '/api/ztm-proxy';
@@ -94,6 +91,8 @@ async function fetchBusData() {
     // if (!globalStart) globalStart = Date.now();
     // Każdy segment (przejście z punktu do punktu) to osobny trip
 // Zamiast opierać się na "historycznym czasie", animujemy tylko nowy segment
+const MIN_SEGMENT_DURATION = 8; // sekundy
+const INTERP_POINTS = 10;
 buses.forEach(bus => {
   const hist = busHistory[bus.VehicleNumber] || [];
   if (hist.length < 2) return;
@@ -191,11 +190,10 @@ async function init() {
 
   function animate() {
     // Global animation time: seconds since globalStart
-    const nowSec = Date.now() / 1000;
-    const elapsedSec = (Date.now() - (lastGlobalStart || Date.now())) / 1000;
+    const nowSec = (Date.now() - (lastGlobalStart || Date.now())) / 1000;
     // TripsLayer expects a global currentTime, not per-trip
     const animatedTrips = lastTripsData;
-    const globalCurrentTime = Math.min(elapsedSec, MIN_SEGMENT_DURATION);
+    const globalCurrentTime = nowSec;
     const tripsLayer = new TripsLayer({
       id: 'trips',
       data: animatedTrips,
