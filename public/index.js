@@ -287,11 +287,7 @@ async function init() {
     overlay.setProps({
       layers: [tripsLayer, scatterLayer]
     });
-
-      // 🛑 Zatrzymaj animację po 1 razie
-    if (nowSec < maxDuration) {
-      animationFrame = requestAnimationFrame(animate);
-    }
+    animationFrame = requestAnimationFrame(animate);
   //   console.log('currentTime:', globalCurrentTime);
   // console.log('sample timestamps:', animatedTrips[0]?.timestamps);
   }
