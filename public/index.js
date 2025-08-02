@@ -137,7 +137,7 @@ async function init() {
   const map = new Map({
     style: 'https://tiles.openfreemap.org/styles/liberty',
     center: [21.0122, 52.2297],
-    zoom: 11,
+    zoom: 13,
     container: 'map',
   });
 
@@ -160,11 +160,11 @@ async function init() {
   map.addControl(overlay);
 
   // Po zoomie odśwież warstwy, aby rozmiar punktów był aktualny, ale nie pobieraj nowych danych
-  map.on('zoom', () => {
-    // Odśwież warstwy z aktualnymi danymi i rozmiarem punktów
-    // Wystarczy wywołać animate() raz, bo on i tak ustawia overlay.setProps
-    animate();
-  });
+  // map.on('zoom', () => {
+  //   // Odśwież warstwy z aktualnymi danymi i rozmiarem punktów
+  //   // Wystarczy wywołać animate() raz, bo on i tak ustawia overlay.setProps
+  //   animate();
+  // });
 
   // --- ANIMACJA I AKTUALIZACJA ---
 
