@@ -219,10 +219,6 @@ async function init() {
       trailLength: d => (d.timestamps[d.timestamps.length-1] - d.timestamps[0]) || 1,
       currentTime: globalCurrentTime,
       fadeTrail: false,
-      updateTriggers: {
-        data: animatedTrips,
-        currentTime: globalCurrentTime,
-      }
     });
     // Scatter layer: show animated head of each bus
     // Odtwórz busSegments tylko na potrzeby scatterLayer
@@ -296,9 +292,6 @@ async function init() {
         } else {
           tooltipDiv.style.display = 'none';
         }
-      },
-      updateTriggers: {
-        data: scatterData,
       }
     });
     overlay.setProps({
