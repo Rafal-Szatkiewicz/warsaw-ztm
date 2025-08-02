@@ -199,10 +199,10 @@ async function init() {
     const nowSec = (Date.now() - lastGlobalStart) / 1000;
 
     // Jeśli minęliśmy już globalEnd, zatrzymaj animację
-    if (nowSec >= globalEnd) {
-      cancelAnimationFrame(animationFrame);
-      return;
-    }
+    // if (nowSec >= globalEnd) {
+    //   cancelAnimationFrame(animationFrame);
+    //   return;
+    // }
 
     // TripsLayer expects a global currentTime, not per-trip
     const animatedTrips = lastTripsData;
