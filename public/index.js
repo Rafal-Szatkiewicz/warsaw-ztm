@@ -306,6 +306,7 @@ async function init() {
   animate();
   setInterval(async () => {
     await updateTrips();
+    animate();
   }, FETCH_INTERVAL);
 }
 
