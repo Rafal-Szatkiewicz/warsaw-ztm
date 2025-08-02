@@ -185,8 +185,6 @@ async function init() {
     lastTripsData = tripsData;
     lastGlobalStart = globalStart;
 
-    animate();
-
     // Oblicz globalEnd jako max timestamp
     globalEnd = lastTripsData.reduce((max, trip) => {
       const t = trip.timestamps[trip.timestamps.length - 1];
@@ -310,6 +308,9 @@ async function init() {
   setInterval(async () => {
     await updateTrips();
   }, FETCH_INTERVAL);
+  setInterval(() => {
+    animate();
+  }, 20000);
 }
 
 document.addEventListener('DOMContentLoaded', init);
