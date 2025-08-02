@@ -178,18 +178,10 @@ async function init() {
   const FETCH_INTERVAL = 10000;
   const ANIMATION_INTERVAL = Math.round(FETCH_INTERVAL * 1.2); // animacja trwa dłużej niż fetch
 
-  let globalEnd = 0;
-
   async function updateTrips() {
     const { trips: tripsData, globalStart } = await fetchBusData();
     lastTripsData = tripsData;
     lastGlobalStart = globalStart;
-
-    // Oblicz globalEnd jako max timestamp
-    globalEnd = lastTripsData.reduce((max, trip) => {
-      const t = trip.timestamps[trip.timestamps.length - 1];
-      return Math.max(max, t);
-    }, 0);
 
   }
 
@@ -197,12 +189,6 @@ async function init() {
     console.log('Animating trips...');
     // Global animation time: seconds since globalStart
     const nowSec = (Date.now() - lastGlobalStart) / 1000;
-
-    // Jeśli minęliśmy już globalEnd, zatrzymaj animację
-    // if (nowSec >= globalEnd) {
-    //   cancelAnimationFrame(animationFrame);
-    //   return;
-    // }
 
     // TripsLayer expects a global currentTime, not per-trip
     const animatedTrips = lastTripsData;
@@ -299,8 +285,6 @@ async function init() {
       layers: [tripsLayer, scatterLayer]
     });
     animationFrame = requestAnimationFrame(animate);
-  //   console.log('currentTime:', globalCurrentTime);
-  // console.log('sample timestamps:', animatedTrips[0]?.timestamps);
   }
 
   await updateTrips();
