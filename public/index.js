@@ -307,10 +307,11 @@ async function init() {
   animate();
   setInterval(async () => {
     await updateTrips();
-  }, FETCH_INTERVAL);
-  setInterval(() => {
     animate();
-  }, 20000);
+  }, FETCH_INTERVAL);
+  // setInterval(() => {
+  //   animate();
+  // }, 20000);
 }
 
 document.addEventListener('DOMContentLoaded', init);
