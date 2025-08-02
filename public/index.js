@@ -194,6 +194,7 @@ async function init() {
   }
 
   function animate() {
+    console.log('Animating trips...');
     // Global animation time: seconds since globalStart
     const nowSec = (Date.now() - lastGlobalStart) / 1000;
 
@@ -306,7 +307,7 @@ async function init() {
   animate();
   setInterval(async () => {
     await updateTrips();
-    //animate();
+    animate();
   }, FETCH_INTERVAL);
 }
 
