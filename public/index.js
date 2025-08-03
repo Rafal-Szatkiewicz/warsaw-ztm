@@ -176,12 +176,12 @@ async function init() {
       getTimestamps: d => d.timestamps,
       getColor: [114, 9, 183],
       opacity: 1,
-      widthMinPixels: 10,
+      widthMinPixels: 5,
       capRounded: true,
       jointRounded: true,
       trailLength: d => (d.timestamps[d.timestamps.length-1] - d.timestamps[0]) || 1,
       currentTime: globalCurrentTime,
-      fadeTrail: false,
+      fadeTrail: false
     });
     // Scatter layer: show animated head of each bus
     // Odtwórz busSegments tylko na potrzeby scatterLayer
