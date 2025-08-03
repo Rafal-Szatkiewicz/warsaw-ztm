@@ -181,7 +181,7 @@ async function init() {
       jointRounded: true,
       trailLength: d => (d.timestamps[d.timestamps.length-1] - d.timestamps[0]) || 1,
       currentTime: globalCurrentTime,
-      fadeTrail: false
+      fadeTrail: true
     });
     // Scatter layer: show animated head of each bus
     // Odtwórz busSegments tylko na potrzeby scatterLayer
