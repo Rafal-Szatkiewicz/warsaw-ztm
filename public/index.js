@@ -79,7 +79,7 @@ async function fetchBusData() {
     // Find the earliest timestamp for global zero
     let globalStart = Date.now();
 // Zamiast opierać się na "historycznym czasie", animujemy tylko nowy segment
-const MIN_SEGMENT_DURATION = 20; // sekundy
+const MIN_SEGMENT_DURATION = 19; // sekundy
 const INTERP_POINTS = 10;
 buses.forEach(bus => {
   const hist = busHistory[bus.VehicleNumber] || [];
