@@ -91,7 +91,7 @@ async function fetchBusData() {
     // if (!globalStart) globalStart = Date.now();
     // Każdy segment (przejście z punktu do punktu) to osobny trip
 // Zamiast opierać się na "historycznym czasie", animujemy tylko nowy segment
-const MIN_SEGMENT_DURATION = 18; // sekundy
+const MIN_SEGMENT_DURATION = 20; // sekundy
 const INTERP_POINTS = 10;
 buses.forEach(bus => {
   const hist = busHistory[bus.VehicleNumber] || [];
