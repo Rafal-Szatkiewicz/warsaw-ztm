@@ -132,7 +132,8 @@ buses.forEach(bus => {
 
 async function init() {
   const map = new Map({
-    style: 'https://tiles.openfreemap.org/styles/liberty',
+    //style: 'https://tiles.openfreemap.org/styles/liberty',
+    style: "/dark_matter.json",
     center: [21.0122, 52.2297],
     zoom: 13,
     container: 'map',
