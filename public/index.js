@@ -176,7 +176,7 @@ async function init() {
       getTimestamps: d => d.timestamps,
       getColor: [114, 9, 183],
       opacity: 1,
-      widthMinPixels: 5,
+      widthMinPixels: 10,
       capRounded: true,
       jointRounded: true,
       trailLength: d => (d.timestamps[d.timestamps.length-1] - d.timestamps[0]) || 1,
@@ -245,7 +245,7 @@ async function init() {
       },
       radiusMinPixels: 2,
       pickable: true,
-      opacity: 0.95,
+      opacity: 1,
       onHover: info => {
         if (info.object && info.object.vehicle && info.object.vehicle.VehicleNumber) {
           tooltipDiv.textContent = `ID: ${info.object.vehicle.VehicleNumber}`;
