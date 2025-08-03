@@ -174,7 +174,7 @@ async function init() {
       data: animatedTrips,
       getPath: d => d.path,
       getTimestamps: d => d.timestamps,
-      getColor: [Math.random()*255, Math.random()*255, Math.random()*255, 180],
+      getColor: [114, 9, 183],
       opacity: 1,
       widthMinPixels: 10,
       capRounded: true,
@@ -235,7 +235,7 @@ async function init() {
       id: 'bus-points',
       data: scatterData,
       getPosition: d => d.pos,
-      getFillColor: d => d.hovered ? [255, 255, 255, 255] : [0, 128, 255, 200],
+      getFillColor: [63, 55, 201],
       getRadius: () => {
         if (map && typeof map.getZoom === 'function') {
           const zoom = map.getZoom();
