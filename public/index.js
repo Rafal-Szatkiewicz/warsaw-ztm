@@ -5,17 +5,14 @@ import {TripsLayer} from '@deck.gl/geo-layers';
 import {ScatterplotLayer} from '@deck.gl/layers';
 
 // --- KONFIGURACJA DANYCH ---
-// Pobieraj dane GTFS-RT z https://mkuran.pl/gtfs/warsaw/vehicles.pb (brak API key)
+// Pobieraj dane GTFS-RT z https://mkuran.pl/gtfs/warsaw/vehicles.pb
 const VEHICLES_PB_URL = '/api/ztm-proxy';
 const GTFS_PROTO_URL = 'https://raw.githubusercontent.com/google/transit/master/gtfs-realtime/proto/gtfs-realtime.proto';
 
 // --- POMOCNICZA HISTORIA AUTOBUSÓW ----
 // VehicleNumber -> [{lon, lat, time}]
 const busHistory = {};
-const HISTORY_LENGTH = 100; // ile pozycji historii trzymać (wydłużony ogon)
-
-// Flaga do przełączania mocków
-const USE_MOCK = false;
+const HISTORY_LENGTH = 100; // ile pozycji historii trzymać
 
 import * as protobuf from 'protobufjs';
 
@@ -38,7 +35,7 @@ async function fetchBusData() {
     const buffer = await pbRes.arrayBuffer();
     const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
     const message = FeedMessage.decode(new Uint8Array(buffer));
-    // Loguj zdekodowany FeedMessage jako JSON
+
     console.log("Fetched new data");
     // Wyciągnij pojazdy z pozycją
     const entities = message.entity || [];
@@ -81,15 +78,6 @@ async function fetchBusData() {
     const trips = [];
     // Find the earliest timestamp for global zero
     let globalStart = Date.now();
-    // buses.forEach(bus => {
-    //   const hist = busHistory[bus.VehicleNumber] || [];
-    //   for (let i = 1; i < hist.length; i++) {
-    //     const prev = hist[i - 1];
-    //     if (globalStart === null || prev.time < globalStart) globalStart = prev.time;
-    //   }
-    // });
-    // if (!globalStart) globalStart = Date.now();
-    // Każdy segment (przejście z punktu do punktu) to osobny trip
 // Zamiast opierać się na "historycznym czasie", animujemy tylko nowy segment
 const MIN_SEGMENT_DURATION = 20; // sekundy
 const INTERP_POINTS = 10;
@@ -159,24 +147,12 @@ async function init() {
   });
   map.addControl(overlay);
 
-  // Po zoomie odśwież warstwy, aby rozmiar punktów był aktualny, ale nie pobieraj nowych danych
-  // map.on('zoom', () => {
-  //   // Odśwież warstwy z aktualnymi danymi i rozmiarem punktów
-  //   // Wystarczy wywołać animate() raz, bo on i tak ustawia overlay.setProps
-  //   animate();
-  // });
-
   // --- ANIMACJA I AKTUALIZACJA ---
 
   let animationFrame;
   let lastTripsData = [];
   let lastGlobalStart = null;
-  let prevHeadPositions = {}; // VehicleNumber -> {lon, lat}
-  let nextHeadPositions = {}; // VehicleNumber -> {lon, lat}
-  let lastFetchTime = Date.now();
-  let nextFetchTime = lastFetchTime + 10000;
   const FETCH_INTERVAL = 20000;
-  const ANIMATION_INTERVAL = Math.round(FETCH_INTERVAL * 1.2); // animacja trwa dłużej niż fetch
 
   async function updateTrips() {
     const { trips: tripsData, globalStart } = await fetchBusData();
