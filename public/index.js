@@ -104,8 +104,8 @@ buses.forEach(bus => {
       ? Array.from({ length: INTERP_POINTS }, (_, j) => (j / (INTERP_POINTS - 1)) * MIN_SEGMENT_DURATION)
       : Array(INTERP_POINTS).fill(0); // statyczny, nie animowany
 
-    const ageFactor = (hist.length - i) / hist.length;
-    const alpha = Math.round(255 * Math.pow(ageFactor, 1.5));
+    const relativeAge = (i - 1) / (hist.length - 2);
+    const alpha = Math.round(255 * Math.pow(relativeAge, 1.5));
     trips.push({
       path,
       timestamps,
