@@ -109,7 +109,7 @@ buses.forEach(bus => {
     trips.push({
       path,
       timestamps,
-      color: [255, 0, 0, alpha],
+      color: [114, 9, 183, alpha],
       vehicle: bus
     });
 
@@ -177,7 +177,7 @@ async function init() {
       data: animatedTrips,
       getPath: d => d.path,
       getTimestamps: d => d.timestamps,
-      getColor: [114, 9, 183],
+      getColor: d => d.color,
       opacity: 1,
       widthMinPixels: 10,
       capRounded: true,
