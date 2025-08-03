@@ -179,7 +179,7 @@ async function init() {
       widthMinPixels: 10,
       capRounded: true,
       jointRounded: true,
-      trailLength: 20,
+      trailLength: 40,
       currentTime: globalCurrentTime,
       fadeTrail: true
     });
