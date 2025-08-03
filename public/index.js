@@ -241,7 +241,7 @@ async function init() {
           const zoom = map.getZoom();
           return Math.max(6, 60 / Math.pow(1.25, zoom - 10));
         }
-        return 40;
+        return 20;
       },
       radiusMinPixels: 2,
       pickable: true,
