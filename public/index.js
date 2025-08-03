@@ -56,10 +56,15 @@ async function fetchBusData() {
     buses.forEach(bus => {
       if (!bus.VehicleNumber) return;
       if (!busHistory[bus.VehicleNumber]) {
-        // Pierwszy fetch: tylko jeden punkt, timestamp = teraz
-        busHistory[bus.VehicleNumber] = [{lon: bus.Lon, lat: bus.Lat, time: now}];
+        const now = Date.now();
+        const earlier = now - 5000;
+        busHistory[bus.VehicleNumber] = [
+          {lon: bus.Lon, lat: bus.Lat, time: earlier},
+          {lon: bus.Lon, lat: bus.Lat, time: now}
+        ];
         return;
       }
+
       const hist = busHistory[bus.VehicleNumber];
       const last = hist.length ? hist[hist.length-1] : null;
       // Dodaj nową pozycję tylko jeśli timestamp jest większy niż ostatni (uniknij duplikatów i cofania)
@@ -159,9 +164,13 @@ async function init() {
   const FETCH_INTERVAL = 20000;
 
   async function updateTrips() {
-    const { trips: tripsData, globalStart } = await fetchBusData();
-    lastTripsData = tripsData;
-    lastGlobalStart = globalStart;
+    const result = await fetchBusData();
+    if (!result || !result.trips) {
+      return;
+    }
+    lastTripsData = result.trips;
+    lastGlobalStart = result.globalStart;
+
 
   }
 
