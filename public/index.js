@@ -131,6 +131,13 @@ buses.forEach(bus => {
 }
 
 async function init() {
+
+  fetch('/dark_matter.json')
+  .then(response => response.json())
+  .then(data => {
+    console.log(data);
+  });
+
   const map = new Map({
     //style: 'https://tiles.openfreemap.org/styles/liberty',
     style: "./.vercel/output/style.json",
