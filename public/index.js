@@ -105,7 +105,8 @@ buses.forEach(bus => {
       : Array(INTERP_POINTS).fill(0); // statyczny, nie animowany
 
     const opacityFactor = i / hist.length;
-    const alpha = Math.round(255 * Math.pow(1 - opacityFactor, 1.5));
+    const alpha = Math.round(255 * Math.pow(opacityFactor, 1.5));
+
     trips.push({
       path,
       timestamps,
