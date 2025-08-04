@@ -49,6 +49,13 @@
             body.dark-map #toggle-theme:hover {
                 background: #333;
             }
+            .maplibregl-canvas-container {
+                transition: filter 0.6s ease;
+            }
+            body.dark-map .maplibregl-canvas-container {
+                filter: invert(1) contrast(1.1) brightness(1.2) grayscale(100%);
+            }
+
         </style>
         <button id="toggle-theme">🌙 Dark Mode</button>
 
