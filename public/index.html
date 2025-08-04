@@ -36,7 +36,7 @@
                 pointer-events: auto;
             }
 
-            #toggle-theme :hover {
+            #toggle-theme:hover {
                 transform: scale(1.05);
                 background: #f0f0f0;
             }
@@ -46,23 +46,10 @@
                 color: #f9f9f9;
             }
 
-            body.dark-map #toggle-theme :hover {
+            body.dark-map #toggle-theme:hover {
                 background: #333;
             }
-            #test-hover:hover {
-            background: red;
-            transform: scale(1.2);
-        }
         </style>
-        <button id="test-hover" style="
-        position: fixed;
-        top: 100px;
-        left: 20px;
-        padding: 10px 20px;
-        background: #ccc;
-        transition: all 0.3s;
-        z-index: 99999;
-        ">Hover me</button>
         <button id="toggle-theme">🌙 Dark Mode</button>
 
         <div id="map"></div>
