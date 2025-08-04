@@ -292,4 +292,40 @@ async function init() {
   }, FETCH_INTERVAL);
 }
 
+let isDarkMode = false;
+
+function setTheme(dark) {
+  const container = document.querySelector('.maplibregl-canvas-container');
+  const btn = document.getElementById('toggle-theme');
+
+  if (dark) {
+    btn.textContent = '☀️ Light Mode';
+    btn.style.background = '#333';
+    btn.style.color = '#fff';
+
+    if (container) {
+      container.style.filter = 'invert(1) contrast(1.1) brightness(1.2) grayscale(100%) !important';
+    }
+
+   // map.setStyle("https://tiles.openfreemap.org/styles/dark");
+
+  } else {
+    btn.textContent = '🌙 Dark Mode';
+    btn.style.background = '#fff';
+    btn.style.color = '#000';
+
+    if (container) {
+      container.style.filter = '';
+    }
+
+    // map.setStyle("https://tiles.openfreemap.org/styles/liberty");
+  }
+
+  isDarkMode = dark;
+}
+
 document.addEventListener('DOMContentLoaded', init);
+
+document.getElementById('toggle-theme').addEventListener('click', () => {
+  setTheme(!isDarkMode);
+});
