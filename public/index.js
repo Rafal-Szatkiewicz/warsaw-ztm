@@ -304,7 +304,8 @@ function setTheme(dark) {
     btn.style.color = '#fff';
 
     if (container) {
-      container.style.filter = 'invert(1) contrast(1.1) brightness(1.2) grayscale(100%) !important';
+      container.setAttribute("style", container.getAttribute("style") + '; filter: invert(1) contrast(1.1) brightness(1.2) grayscale(100%) !important;');
+
     }
 
    // map.setStyle("https://tiles.openfreemap.org/styles/dark");
