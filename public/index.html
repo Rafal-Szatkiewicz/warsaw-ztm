@@ -19,15 +19,34 @@
             }
             #toggle-theme {
                 position: fixed;
-                top: 10px;
-                right: 10px;
+                top: 16px;
+                right: 16px;
                 z-index: 9999;
-                background: white;
-                color: black;
-                border: 1px solid black;
-                padding: 6px 10px;
-                cursor: pointer;
+                padding: 10px 16px;
+                background: #ffffffdd;
+                color: #111;
+                border: none;
+                border-radius: 999px;
                 font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+                backdrop-filter: blur(6px);
+                transition: all 0.3s ease;
+            }
+
+            #theme-toggle:hover {
+                transform: scale(1.05);
+                background: #f0f0f0;
+            }
+
+            body.dark-map #theme-toggle {
+                background: #222222dd;
+                color: #f9f9f9;
+            }
+
+            body.dark-map #theme-toggle:hover {
+                background: #333;
             }
         </style>
         <button id="toggle-theme">🌙 Dark Mode</button>
