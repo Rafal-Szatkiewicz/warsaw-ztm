@@ -192,7 +192,7 @@ async function init() {
       getTimestamps: d => d.timestamps,
       getColor: d => d.color,
       opacity: 1,
-      widthMinPixels: 5,
+      widthMinPixels: 10,
       capRounded: true,
       jointRounded: true,
       trailLength: 40,
