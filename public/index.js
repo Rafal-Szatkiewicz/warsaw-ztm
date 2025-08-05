@@ -252,7 +252,7 @@ async function init() {
       id: 'bus-points',
       data: scatterData,
       getPosition: d => d.pos,
-      getFillColor: [124, 181, 24],
+      getFillColor: [18, 9, 87],
       getRadius: 10,
       radiusMinPixels: 2,
       pickable: true,
