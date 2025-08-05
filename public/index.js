@@ -49,8 +49,7 @@ async function fetchBusData() {
         Lines: e.vehicle.trip && e.vehicle.trip.routeId ? e.vehicle.trip.routeId : '',
         Brigade: e.vehicle.vehicle && e.vehicle.vehicle.id ? e.vehicle.vehicle.id : '',
         Timestamp: (e.vehicle.timestamp ? e.vehicle.timestamp * 1000 : now)
-      }))
-      .filter(bus => bus.VehicleNumber !== 'V/10/9');
+      }));
 
     // Aktualizuj historię pozycji
     buses.forEach(bus => {
