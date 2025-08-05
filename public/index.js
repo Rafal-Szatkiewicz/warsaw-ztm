@@ -281,7 +281,7 @@ async function init() {
   }, FETCH_INTERVAL);
 }
 
-let isDarkMode = false;
+let isDarkMode = true;
 
 function setTheme(dark) {
   const container = document.querySelector('.maplibregl-canvas-container');
@@ -311,7 +311,10 @@ function setTheme(dark) {
   isDarkMode = dark;
 }
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => {
+  init();
+  setTheme(true);
+});
 
 document.getElementById('toggle-theme').addEventListener('click', () => {
   setTheme(!isDarkMode);
