@@ -37,6 +37,7 @@ async function fetchBusData() {
     const message = FeedMessage.decode(new Uint8Array(buffer));
 
     console.log("Fetched new data");
+    // console.log('FeedMessage JSON:', JSON.stringify(FeedMessage.toObject(message), null, 2));
     // Wyciągnij pojazdy z pozycją
     const entities = message.entity || [];
     const now = Date.now();
