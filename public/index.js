@@ -47,8 +47,7 @@ async function fetchBusData() {
         VehicleNumber: e.vehicle.vehicle && e.vehicle.vehicle.id ? e.vehicle.vehicle.id : '',
         Lon: e.vehicle.position.longitude,
         Lat: e.vehicle.position.latitude,
-        Lines: e.vehicle.trip && e.vehicle.trip.routeId ? e.vehicle.trip.routeId : '',
-        Brigade: e.vehicle.vehicle && e.vehicle.vehicle.id ? e.vehicle.vehicle.id : '',
+        Brigade: e.vehicle.vehicle && e.vehicle.vehicle.label ? e.vehicle.vehicle.label : '',
         Timestamp: (e.vehicle.timestamp ? e.vehicle.timestamp * 1000 : now)
       }));
 
@@ -259,7 +258,7 @@ async function init() {
       opacity: 1,
       onHover: info => {
         if (info.object && info.object.vehicle && info.object.vehicle.VehicleNumber) {
-          tooltipDiv.textContent = `ID: ${info.object.vehicle.VehicleNumber}`;
+          tooltipDiv.textContent = `ID: ${info.object.vehicle.VehicleNumber}\n Label: ${info.object.vehicle.Brigade}`;
           tooltipDiv.style.left = info.x + 10 + 'px';
           tooltipDiv.style.top = info.y + 10 + 'px';
           tooltipDiv.style.display = 'block';
