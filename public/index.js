@@ -90,7 +90,9 @@ buses.forEach(bus => {
   const hist = busHistory[bus.VehicleNumber] || [];
   if (hist.length < 2) return;
 
-  for (let i = 1; i < hist.length; i++) {
+  const segmentCount = hist.length - 1;
+  const startIndex = Math.max(1, segmentCount - 2);
+  for (let i = startIndex; i < hist.length; i++) {
     const prev = hist[i - 1];
     const curr = hist[i];
 
