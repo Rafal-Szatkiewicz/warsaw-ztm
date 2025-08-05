@@ -116,7 +116,7 @@ buses.forEach(bus => {
     trips.push({
       path,
       timestamps,
-      color: [232, 93, 4, alpha],
+      color: [124, 181, 24, alpha],
       vehicle: bus
     });
 
@@ -251,14 +251,8 @@ async function init() {
       id: 'bus-points',
       data: scatterData,
       getPosition: d => d.pos,
-      getFillColor: [232, 93, 4],
-      getRadius: () => {
-        if (map && typeof map.getZoom === 'function') {
-          const zoom = map.getZoom();
-          return Math.max(6, 60 / Math.pow(1.25, zoom - 10));
-        }
-        return 10;
-      },
+      getFillColor: [124, 181, 24],
+      getRadius: 10,
       radiusMinPixels: 2,
       pickable: true,
       opacity: 1,
