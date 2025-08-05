@@ -136,7 +136,7 @@ async function init() {
     style: 'https://tiles.openfreemap.org/styles/liberty',
     //style: "https://tiles.openfreemap.org/styles/dark",
     center: [21.0122, 52.2297],
-    zoom: 13,
+    zoom: 17,
     container: 'map',
   });
 
