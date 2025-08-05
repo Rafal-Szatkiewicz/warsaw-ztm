@@ -290,16 +290,12 @@ function setTheme(dark) {
   if (dark) {
     document.body.classList.add('dark-map');
     btn.textContent = '☀️ Light Mode';
-    btn.style.background = '#333';
-    btn.style.color = '#fff';
 
    // map.setStyle("https://tiles.openfreemap.org/styles/dark");
 
   } else {
     document.body.classList.remove('dark-map');
     btn.textContent = '🌙 Dark Mode';
-    btn.style.background = '#fff';
-    btn.style.color = '#000';
 
     if (container) {
       container.style.filter = '';
