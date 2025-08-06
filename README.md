@@ -23,3 +23,7 @@ Data is fetched every 20 seconds from [MKuran GTFS feed](https://mkuran.pl/gtfs/
 - [Deck.gl](https://deck.gl/)
 - [MapLibre GL](https://maplibre.org/)
 - [Parcel](https://parceljs.org)
+
+## 📝 Attribution
+Data provided by Miasto Stołeczne Warszawa via http://api.um.warszawa.pl.
+The download timestamp is taken from the FeedHeader.timestamp field in the response.
