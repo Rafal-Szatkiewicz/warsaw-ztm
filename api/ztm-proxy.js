@@ -1,7 +1,9 @@
-export default async function handler(req, res) {
+export default async function handler(req, res) 
+{
   const url = "https://mkuran.pl/gtfs/warsaw/vehicles.pb";
   const response = await fetch(url);
-  if (!response.ok) {
+  if (!response.ok) 
+  {
     res.status(response.status).send("Failed to fetch GTFS-RT data");
     return;
   }

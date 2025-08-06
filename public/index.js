@@ -3,21 +3,21 @@ import {Map} from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {TripsLayer} from '@deck.gl/geo-layers';
 import {ScatterplotLayer} from '@deck.gl/layers';
+import * as protobuf from 'protobufjs';
 
-// --- KONFIGURACJA DANYCH ---
-// Pobieraj dane GTFS-RT z https://mkuran.pl/gtfs/warsaw/vehicles.pb
+// Download GTFS from https://mkuran.pl/gtfs/warsaw/vehicles.pb
+
 const VEHICLES_PB_URL = '/api/ztm-proxy';
 const GTFS_PROTO_URL = 'https://raw.githubusercontent.com/google/transit/master/gtfs-realtime/proto/gtfs-realtime.proto';
 
-// --- POMOCNICZA HISTORIA AUTOBUSÓW ----
-// VehicleNumber -> [{lon, lat, time}]
 const busHistory = {};
-const HISTORY_LENGTH = 100; // ile pozycji historii trzymać
+const HISTORY_LENGTH = 100;
 
-import * as protobuf from 'protobufjs';
+
 
 let gtfsRoot = null;
-async function loadGtfsProto() {
+async function loadGtfsProto() 
+{
   if (gtfsRoot) return gtfsRoot;
   const res = await fetch(GTFS_PROTO_URL);
   const protoText = await res.text();
@@ -25,9 +25,11 @@ async function loadGtfsProto() {
   return gtfsRoot;
 }
 
-async function fetchBusData() {
-  try {
-    // Pobierz plik protobuf
+async function fetchBusData() 
+{
+  try 
+  {
+    // Download protobuf
     const [root, pbRes] = await Promise.all([
       loadGtfsProto(),
       fetch(VEHICLES_PB_URL)
@@ -38,7 +40,7 @@ async function fetchBusData() {
 
     console.log("Fetched new data");
     // console.log('FeedMessage JSON:', JSON.stringify(FeedMessage.toObject(message), null, 2));
-    // Wyciągnij pojazdy z pozycją
+    // Fetch entities and convert to bus data
     const entities = message.entity || [];
     const now = Date.now();
     const buses = entities
@@ -51,7 +53,7 @@ async function fetchBusData() {
         Timestamp: (e.vehicle.timestamp ? e.vehicle.timestamp * 1000 : now)
       }));
 
-    // Aktualizuj historię pozycji
+    // Update bus history
     buses.forEach(bus => {
       if (!bus.VehicleNumber) return;
       if (!busHistory[bus.VehicleNumber]) {
@@ -66,71 +68,72 @@ async function fetchBusData() {
 
       const hist = busHistory[bus.VehicleNumber];
       const last = hist.length ? hist[hist.length-1] : null;
-      // Dodaj nową pozycję tylko jeśli timestamp jest większy niż ostatni (uniknij duplikatów i cofania)
+      // Add new position only if it's newer than the last recorded time
       if (last && bus.Timestamp <= last.time) {
-        // Nie resetuj historii, po prostu pomiń ten punkt
         return;
       }
-      // Dodaj nową pozycję tylko jeśli inna niż ostatnia (pozycja lub timestamp)
+      // Add new position only if it's different from the last recorded position
       if (!last || last.lon !== bus.Lon || last.lat !== bus.Lat || last.time !== bus.Timestamp) {
         hist.push({lon: bus.Lon, lat: bus.Lat, time: bus.Timestamp});
         if (hist.length > HISTORY_LENGTH) hist.shift();
       }
     });
 
-    // Zwróć tablicę segmentów (każdy odcinek historii jako osobny trip)
+    // Return trips data for animation
     const trips = [];
-    // Find the earliest timestamp for global zero
     let globalStart = Date.now();
-// Zamiast opierać się na "historycznym czasie", animujemy tylko nowy segment
-const MIN_SEGMENT_DURATION = 19; // sekundy
-const INTERP_POINTS = 10;
-buses.forEach(bus => {
-  const hist = busHistory[bus.VehicleNumber] || [];
-  if (hist.length < 2) return;
+    // Zamiast opierać się na "historycznym czasie", animujemy tylko nowy segment
+    const MIN_SEGMENT_DURATION = 19; // sekundy
+    const INTERP_POINTS = 10;
+    buses.forEach(bus => {
+      const hist = busHistory[bus.VehicleNumber] || [];
+      if (hist.length < 2) return;
 
-  const startIndex = Math.max(1, hist.length - 3);
-  for (let i = startIndex; i < hist.length; i++) {
-    const prev = hist[i - 1];
-    const curr = hist[i];
+      const startIndex = Math.max(1, hist.length - 3);
+      for (let i = startIndex; i < hist.length; i++) 
+      {
+        const prev = hist[i - 1];
+        const curr = hist[i];
 
-    const path = [];
-    for (let j = 0; j < INTERP_POINTS; j++) {
-      const frac = j / (INTERP_POINTS - 1);
-      const lon = prev.lon + (curr.lon - prev.lon) * frac;
-      const lat = prev.lat + (curr.lat - prev.lat) * frac;
-      path.push([lon, lat]);
-    }
+        const path = [];
+        for (let j = 0; j < INTERP_POINTS; j++) 
+        {
+          const frac = j / (INTERP_POINTS - 1);
+          const lon = prev.lon + (curr.lon - prev.lon) * frac;
+          const lat = prev.lat + (curr.lat - prev.lat) * frac;
+          path.push([lon, lat]);
+        }
 
-    // Dla ostatniego segmentu: pełna animacja
-    // Dla wcześniejszych: timestamps "skończone", by nie animować
-    const isLast = (i === hist.length - 1);
-    const timestamps = isLast
-      ? Array.from({ length: INTERP_POINTS }, (_, j) => (j / (INTERP_POINTS - 1)) * MIN_SEGMENT_DURATION)
-      : Array(INTERP_POINTS).fill(0); // statyczny, nie animowany
+        // Animate last segment
+        // For previous segments, use static timestamps
+        const isLast = (i === hist.length - 1);
+        const timestamps = isLast
+          ? Array.from({ length: INTERP_POINTS }, (_, j) => (j / (INTERP_POINTS - 1)) * MIN_SEGMENT_DURATION)
+          : Array(INTERP_POINTS).fill(0); // static
 
-    const opacityFactor = i / (hist.length - 1);
-    const alpha = Math.round(255 * Math.pow(opacityFactor, 0.7));
+        const opacityFactor = i / (hist.length - 1);
+        const alpha = Math.round(255 * Math.pow(opacityFactor, 0.7));
 
-    trips.push({
-      path,
-      timestamps,
-      color: [123, 181, 23, alpha],
-      vehicle: bus
-    });
+        trips.push({
+          path,
+          timestamps,
+          color: [123, 181, 23, alpha],
+          vehicle: bus
+        });
 
-  }
+      }
 });
 
 
     return { trips, globalStart };
   } catch (e) {
-    console.error('Błąd pobierania danych autobusów:', e);
+    console.error('Error while fetching bus data:', e);
     return [];
   }
 }
 
-async function init() {
+async function init() 
+{
 
   const map = new Map({
     style: 'https://tiles.openfreemap.org/styles/liberty',
@@ -142,41 +145,32 @@ async function init() {
 
   // Dodaj element na tooltip
   let tooltipDiv = document.createElement('div');
-  tooltipDiv.style.position = 'fixed';
-  tooltipDiv.style.pointerEvents = 'none';
-  tooltipDiv.style.background = 'rgba(0,0,0,0.85)';
-  tooltipDiv.style.color = '#fff';
-  tooltipDiv.style.padding = '4px 8px';
-  tooltipDiv.style.borderRadius = '4px';
-  tooltipDiv.style.fontSize = '14px';
-  tooltipDiv.style.zIndex = 1000;
-  tooltipDiv.style.display = 'none';
+  tooltipDiv.className = 'bus-tooltip';
   document.body.appendChild(tooltipDiv);
+
 
   const overlay = new MapboxOverlay({
     layers: []
   });
   map.addControl(overlay);
 
-  // --- ANIMACJA I AKTUALIZACJA ---
-
   let animationFrame;
   let lastTripsData = [];
   let lastGlobalStart = null;
   const FETCH_INTERVAL = 20000;
 
-  async function updateTrips() {
+  async function updateTrips() 
+  {
     const result = await fetchBusData();
-    if (!result || !result.trips) {
-      return;
-    }
+    if (!result || !result.trips) return;
     lastTripsData = result.trips;
     lastGlobalStart = result.globalStart;
 
 
   }
 
-  function animate() {
+  function animate() 
+  {
     console.log('Animating trips...');
     // Global animation time: seconds since globalStart
     const nowSec = (Date.now() - lastGlobalStart) / 1000;
@@ -200,35 +194,45 @@ async function init() {
       fadeTrail: false
     });
     // Scatter layer: show animated head of each bus
-    // Odtwórz busSegments tylko na potrzeby scatterLayer
     const busSegments = {};
-    for (const trip of lastTripsData) {
+    for (const trip of lastTripsData) 
+    {
       const vehicleId = trip.vehicle && trip.vehicle.VehicleNumber;
       if (!vehicleId) continue;
       if (!busSegments[vehicleId]) busSegments[vehicleId] = [];
       busSegments[vehicleId].push(trip);
     }
     const busHeads = {};
-    for (const segments of Object.values(busSegments)) {
+    for (const segments of Object.values(busSegments)) 
+    {
       segments.sort((a, b) => a.timestamps[0] - b.timestamps[0]);
       let headPos = null;
       let vehicle = null;
-      for (let i = 0; i < segments.length; i++) {
+      for (let i = 0; i < segments.length; i++) 
+      {
         const trip = segments[i];
         const start = trip.timestamps[0];
         const end = trip.timestamps[trip.timestamps.length - 1];
         vehicle = trip.vehicle;
-        if (nowSec < start) {
+        if (nowSec < start) 
+        {
           continue;
-        } else if (nowSec >= end) {
+        } 
+        else if (nowSec >= end) 
+        {
           headPos = trip.path[trip.path.length - 1];
-        } else {
-          // Animowany segment
+        } 
+        else 
+        {
+          // Animated head position
           const segTime = nowSec - start;
           let idx = trip.timestamps.findIndex(t => t > segTime + start);
-          if (idx === -1 || idx === 0) {
+          if (idx === -1 || idx === 0) 
+          {
             headPos = trip.path[trip.path.length - 1];
-          } else {
+          } 
+          else 
+          {
             const t0 = trip.timestamps[idx - 1];
             const t1 = trip.timestamps[idx];
             const p0 = trip.path[idx - 1];
@@ -242,7 +246,8 @@ async function init() {
           break;
         }
       }
-      if (headPos && vehicle) {
+      if (headPos && vehicle) 
+      {
         busHeads[vehicle.VehicleNumber] = { pos: headPos, vehicle };
       }
     }
@@ -258,12 +263,12 @@ async function init() {
       opacity: 1,
       onHover: info => {
         if (info.object && info.object.vehicle && info.object.vehicle.VehicleNumber) {
-          tooltipDiv.textContent = `ID: ${info.object.vehicle.VehicleNumber}\n Label: ${info.object.vehicle.Brigade}`;
+          tooltipDiv.textContent = `${info.object.vehicle.VehicleNumber}`;
           tooltipDiv.style.left = info.x + 10 + 'px';
           tooltipDiv.style.top = info.y + 10 + 'px';
-          tooltipDiv.style.display = 'block';
+          tooltipDiv.classList.add('show');
         } else {
-          tooltipDiv.style.display = 'none';
+          tooltipDiv.classList.remove('show');
         }
       }
     });
@@ -283,21 +288,26 @@ async function init() {
 
 let isDarkMode = true;
 
-function setTheme(dark) {
+function setTheme(dark) 
+{
   const container = document.querySelector('.maplibregl-canvas-container');
   const btn = document.getElementById('toggle-theme');
 
-  if (dark) {
+  if (dark) 
+    {
     document.body.classList.add('dark-map');
     btn.textContent = '☀️ Light Mode';
 
    // map.setStyle("https://tiles.openfreemap.org/styles/dark");
 
-  } else {
+  } 
+  else 
+  {
     document.body.classList.remove('dark-map');
     btn.textContent = '🌙 Dark Mode';
 
-    if (container) {
+    if (container) 
+    {
       container.style.filter = '';
     }
 
