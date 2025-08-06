@@ -108,9 +108,35 @@
                 background: #ffffffcc;
                 color: #111;
             }
+            #startup-info {
+            position: fixed;
+            top: 70px;
+            right: 16px;
+            background: #222222dd;
+            color: #f9f9f9;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 999999;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(6px);
+            transition: opacity 0.5s ease;
+        }
 
+        body.dark-map #startup-info {
+            background: #ffffffdd;
+            color: #111;
+        }
+
+        #startup-info.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
         </style>
         <button id="toggle-theme">🌙 Dark Mode</button>
+
+        <div id="startup-info">⏳ Please wait ~40 seconds for vehicles to start moving...</div>
 
         <div id="map"></div>
 

@@ -286,6 +286,12 @@ async function init()
 
   await updateTrips();
   animate();
+  // Hide startup info after 40 seconds
+  setTimeout(() => {
+    const infoBox = document.getElementById('startup-info');
+    if (infoBox) infoBox.classList.add('fade-out');
+  }, 40000);
+
   setInterval(async () => {
     await updateTrips();
     animate();
