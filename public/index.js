@@ -290,7 +290,7 @@ async function init()
   setTimeout(() => {
     const infoBox = document.getElementById('startup-info');
     if (infoBox) infoBox.classList.add('fade-out');
-  }, 40000);
+  }, 20000);
 
   setInterval(async () => {
     await updateTrips();
