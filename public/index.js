@@ -169,9 +169,9 @@ async function init()
 
     // Update timestamp display
     if (result.timestamp) {
-      const tsDiv = document.getElementById('timestamp-display');
+      const tsDiv = document.getElementById('timestamp-value');
       const date = new Date(result.timestamp * 1000);
-      tsDiv.textContent = `Timestamp: ${date.toLocaleString()}`;
+      tsDiv.textContent = `${date.toLocaleString()}`;
     }
   }
 
