@@ -37,6 +37,7 @@ async function fetchBusData()
     const buffer = await pbRes.arrayBuffer();
     const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
     const message = FeedMessage.decode(new Uint8Array(buffer));
+    let timestamp = message.header?.timestamp || null;
 
     console.log("Fetched new data");
     // console.log('FeedMessage JSON:', JSON.stringify(FeedMessage.toObject(message), null, 2));
@@ -122,10 +123,10 @@ async function fetchBusData()
         });
 
       }
-});
+    });
 
 
-    return { trips, globalStart };
+    return { trips, globalStart, timestamp };
   } catch (e) {
     console.error('Error while fetching bus data:', e);
     return [];
@@ -166,7 +167,12 @@ async function init()
     lastTripsData = result.trips;
     lastGlobalStart = result.globalStart;
 
-
+    // Update timestamp display
+    if (result.timestamp) {
+      const tsDiv = document.getElementById('timestamp-display');
+      const date = new Date(result.timestamp * 1000);
+      tsDiv.textContent = `Timestamp: ${date.toLocaleString()}`;
+    }
   }
 
   function animate() 
